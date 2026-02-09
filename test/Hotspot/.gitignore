@@ -1,0 +1,11 @@
+# User-specific configuration (contains secrets)
+config.h
+
+# Build files
+*.bin
+*.elf
+build/
+
+# IDE files
+.vscode/
+.DS_Store
