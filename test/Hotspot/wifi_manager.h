@@ -5,7 +5,7 @@
 #include <WebServer.h>
 #include <DNSServer.h>
 #include <Preferences.h>
-#include "web_pages.h"  // Add this line!
+#include "web_pages.h"
 
 // External references to objects from main file
 extern WebServer server;
