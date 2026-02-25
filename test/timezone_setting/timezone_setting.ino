@@ -149,6 +149,21 @@ uint32_t messageUntilMs = 0;
 volatile int32_t encDelta = 0;
 volatile uint8_t encPrevState = 0;
 
+bool homeClockLayoutReady = false;
+bool homeClockWasInvalid = true;
+int homePrevYear = -1;
+int homePrevMonth = -1;
+int homePrevDay = -1;
+int homePrevHour = -1;
+int homePrevMinute = -1;
+int homePrevSecond = -1;
+
+bool worldLayoutReady = false;
+int worldPrevIdx[4] = {-1, -1, -1, -1};
+int worldPrevHour[4] = {-1, -1, -1, -1};
+int worldPrevMinute[4] = {-1, -1, -1, -1};
+int worldPrevSecond[4] = {-1, -1, -1, -1};
+
 /* ================= INPUT ================= */
 void IRAM_ATTR onEncClkChange() {
   static const int8_t trans[16] = {
@@ -329,7 +344,50 @@ String formatClockInZone(int idx, time_t baseNow) {
   return String(buf);
 }
 
+bool getTimeInZone(int idx, time_t baseNow, struct tm* out) {
+  if (baseNow <= 100000 || idx < 0 || idx >= TZ_COUNT) return false;
+
+  const char* restore = kTimezones[tzIndex].posix;
+  setenv("TZ", kTimezones[idx].posix, 1);
+  tzset();
+  localtime_r(&baseNow, out);
+  setenv("TZ", restore, 1);
+  tzset();
+  return true;
+}
+
 /* ================= UI ================= */
+void drawHomeTimeOnly();
+void drawWorldRowsOnly();
+
+void resetHomeClockCache() {
+  homeClockLayoutReady = false;
+  homeClockWasInvalid = true;
+  homePrevYear = -1;
+  homePrevMonth = -1;
+  homePrevDay = -1;
+  homePrevHour = -1;
+  homePrevMinute = -1;
+  homePrevSecond = -1;
+}
+
+void drawClockField(int x, int y, int w, const char* text, uint16_t fg, uint16_t bg) {
+  tft.fillRect(x, y, w, 22, bg);
+  tft.setTextColor(fg, bg);
+  tft.setTextSize(2);
+  tft.drawString(text, x, y);
+}
+
+void resetWorldClockCache() {
+  worldLayoutReady = false;
+  for (int i = 0; i < 4; i++) {
+    worldPrevIdx[i] = -1;
+    worldPrevHour[i] = -1;
+    worldPrevMinute[i] = -1;
+    worldPrevSecond[i] = -1;
+  }
+}
+
 void drawHeader(const char* title) {
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_CYAN, TFT_BLACK);
@@ -422,16 +480,6 @@ void drawHome() {
   tft.setTextSize(2);
   tft.drawString("Local Time:", 10, 55);
 
-  struct tm ti;
-  if (getLocalTimeSafe(&ti)) {
-    char buf[24];
-    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &ti);
-    tft.drawString(buf, 10, 85);
-  } else {
-    tft.setTextColor(TFT_ORANGE, TFT_BLACK);
-    tft.drawString("Not set yet", 10, 85);
-  }
-
   tft.setTextColor(TFT_YELLOW, TFT_BLACK);
   tft.drawString("Local TZ:", 10, 130);
   tft.drawString(kTimezones[tzIndex].iana, 10, 160);
@@ -443,6 +491,71 @@ void drawHome() {
   tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
   tft.setTextSize(2);
   tft.drawString("Hold knob 5s to open menu", 10, 220);
+
+  resetHomeClockCache();
+  drawHomeTimeOnly();
+}
+
+void drawHomeTimeOnly() {
+  struct tm ti;
+  if (getLocalTimeSafe(&ti)) {
+    const int y = 85;
+
+    if (!homeClockLayoutReady || homeClockWasInvalid) {
+      tft.fillRect(10, y, tft.width() - 20, 30, TFT_BLACK);
+      tft.setTextColor(TFT_WHITE, TFT_BLACK);
+      tft.setTextSize(2);
+      tft.drawString("-", 58, y);
+      tft.drawString("-", 94, y);
+      tft.drawString(":", 166, y);
+      tft.drawString(":", 202, y);
+      homeClockLayoutReady = true;
+      homeClockWasInvalid = false;
+    }
+
+    if (ti.tm_year != homePrevYear) {
+      char b[5];
+      snprintf(b, sizeof(b), "%04d", ti.tm_year + 1900);
+      drawClockField(10, y, 46, b, TFT_WHITE, TFT_BLACK);
+      homePrevYear = ti.tm_year;
+    }
+    if (ti.tm_mon != homePrevMonth) {
+      char b[3];
+      snprintf(b, sizeof(b), "%02d", ti.tm_mon + 1);
+      drawClockField(70, y, 22, b, TFT_WHITE, TFT_BLACK);
+      homePrevMonth = ti.tm_mon;
+    }
+    if (ti.tm_mday != homePrevDay) {
+      char b[3];
+      snprintf(b, sizeof(b), "%02d", ti.tm_mday);
+      drawClockField(106, y, 22, b, TFT_WHITE, TFT_BLACK);
+      homePrevDay = ti.tm_mday;
+    }
+    if (ti.tm_hour != homePrevHour) {
+      char b[3];
+      snprintf(b, sizeof(b), "%02d", ti.tm_hour);
+      drawClockField(142, y, 22, b, TFT_WHITE, TFT_BLACK);
+      homePrevHour = ti.tm_hour;
+    }
+    if (ti.tm_min != homePrevMinute) {
+      char b[3];
+      snprintf(b, sizeof(b), "%02d", ti.tm_min);
+      drawClockField(178, y, 22, b, TFT_WHITE, TFT_BLACK);
+      homePrevMinute = ti.tm_min;
+    }
+    if (ti.tm_sec != homePrevSecond) {
+      char b[3];
+      snprintf(b, sizeof(b), "%02d", ti.tm_sec);
+      drawClockField(214, y, 22, b, TFT_WHITE, TFT_BLACK);
+      homePrevSecond = ti.tm_sec;
+    }
+  } else {
+    tft.fillRect(10, 85, tft.width() - 20, 30, TFT_BLACK);
+    tft.setTextColor(TFT_ORANGE, TFT_BLACK);
+    tft.setTextSize(2);
+    tft.drawString("Not set yet", 10, 85);
+    homeClockWasInvalid = true;
+  }
 }
 
 void drawMenu() {
@@ -470,9 +583,7 @@ void drawMenu() {
   tft.drawString("Rotate: move   Press: confirm", 10, 190);
 }
 
-void drawWorldView() {
-  drawHeader("World Clocks");
-
+void drawWorldRowsOnly() {
   time_t now = time(nullptr);
   int yTop = 50;
   int rowH = 52;
@@ -480,23 +591,67 @@ void drawWorldView() {
   for (int row = 0; row < 4; row++) {
     int idx = (worldBaseIndex + row) % TZ_COUNT;
     int y = yTop + row * rowH;
-
     uint16_t bg = (row == 0) ? TFT_NAVY : TFT_BLACK;
-    tft.fillRoundRect(8, y - 2, tft.width() - 16, rowH - 6, 5, bg);
 
-    tft.setTextSize(2);
-    tft.setTextColor(row == 0 ? TFT_WHITE : TFT_CYAN, bg);
-    tft.drawString(kTimezones[idx].iana, 14, y + 2);
+    if (!worldLayoutReady || worldPrevIdx[row] != idx) {
+      tft.fillRoundRect(8, y - 2, tft.width() - 16, rowH - 6, 5, bg);
 
-    tft.setTextSize(2);
-    tft.setTextColor(row == 0 ? TFT_YELLOW : TFT_GREEN, bg);
-    tft.drawString(formatClockInZone(idx, now), 14, y + 16);
+      tft.setTextSize(2);
+      tft.setTextColor(row == 0 ? TFT_WHITE : TFT_CYAN, bg);
+      tft.drawString(kTimezones[idx].iana, 14, y + 2);
+
+      tft.setTextColor(row == 0 ? TFT_YELLOW : TFT_GREEN, bg);
+      tft.drawString(":", 173, y + 16);
+      tft.drawString(":", 209, y + 16);
+
+      worldPrevIdx[row] = idx;
+      worldPrevHour[row] = -1;
+      worldPrevMinute[row] = -1;
+      worldPrevSecond[row] = -1;
+    }
+
+    struct tm ti;
+    if (!getTimeInZone(idx, now, &ti)) {
+      drawClockField(149, y + 16, 22, "--", row == 0 ? TFT_YELLOW : TFT_GREEN, bg);
+      drawClockField(185, y + 16, 22, "--", row == 0 ? TFT_YELLOW : TFT_GREEN, bg);
+      drawClockField(221, y + 16, 22, "--", row == 0 ? TFT_YELLOW : TFT_GREEN, bg);
+      continue;
+    }
+
+    uint16_t fg = row == 0 ? TFT_YELLOW : TFT_GREEN;
+    if (ti.tm_hour != worldPrevHour[row]) {
+      char b[3];
+      snprintf(b, sizeof(b), "%02d", ti.tm_hour);
+      drawClockField(149, y + 16, 22, b, fg, bg);
+      worldPrevHour[row] = ti.tm_hour;
+    }
+    if (ti.tm_min != worldPrevMinute[row]) {
+      char b[3];
+      snprintf(b, sizeof(b), "%02d", ti.tm_min);
+      drawClockField(185, y + 16, 22, b, fg, bg);
+      worldPrevMinute[row] = ti.tm_min;
+    }
+    if (ti.tm_sec != worldPrevSecond[row]) {
+      char b[3];
+      snprintf(b, sizeof(b), "%02d", ti.tm_sec);
+      drawClockField(221, y + 16, 22, b, fg, bg);
+      worldPrevSecond[row] = ti.tm_sec;
+    }
   }
+
+  worldLayoutReady = true;
+}
+
+void drawWorldView() {
+  drawHeader("World Clocks");
 
   tft.setTextSize(2);
   tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
   tft.drawString("Rotate: scroll timezones", 10, 262);
   tft.drawString("Press: back to menu", 10, 276);
+
+  resetWorldClockCache();
+  drawWorldRowsOnly();
 }
 
 void showMessage(const String& l1, const String& l2, uint32_t durationMs) {
@@ -603,10 +758,11 @@ void handleTimeEdit() {
 }
 
 void handleHome() {
-  static uint32_t lastRefresh = 0;
-  if (millis() - lastRefresh > 900) {
-    lastRefresh = millis();
-    drawHome();
+  static time_t lastSecond = -1;
+  time_t now = time(nullptr);
+  if (now != lastSecond) {
+    lastSecond = now;
+    drawHomeTimeOnly();
   }
 
   if (buttonLongPressEvent(LONG_PRESS_MS)) {
@@ -652,12 +808,13 @@ void handleWorldView() {
     worldBaseIndex += d;
     while (worldBaseIndex < 0) worldBaseIndex += TZ_COUNT;
     while (worldBaseIndex >= TZ_COUNT) worldBaseIndex -= TZ_COUNT;
-    drawWorldView();
+    resetWorldClockCache();
+    drawWorldRowsOnly();
   }
 
   if (millis() - lastRefresh > 1000) {
     lastRefresh = millis();
-    drawWorldView();
+    drawWorldRowsOnly();
   }
 
   if (buttonPressedEvent()) {
