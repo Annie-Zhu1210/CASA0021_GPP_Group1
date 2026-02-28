@@ -109,16 +109,18 @@ void drawMenu() {
   timeEditStaticDrawn = false;
   drawHeader("Settings Menu");
 
-  const char* options[3] = {
+  const char* options[4] = {
       "Set timezone",
       "Set date & time",
       "World clocks",
+      "Back to Home",
   };
 
-  for (int i = 0; i < 3; i++) {
-    int y = 72 + i * 44;
+  for (int i = 0; i < 4; i++) {
+    int y = 56 + i * 44;
     bool selected = (i == menuIndex);
     uint16_t bg = selected ? TFT_DARKCYAN : TFT_BLACK;
+    if (selected && i == 3) bg = TFT_DARKGREEN;
     tft.fillRoundRect(10, y - 4, tft.width() - 20, 34, 6, bg);
     tft.setTextColor(selected ? TFT_WHITE : TFT_LIGHTGREY, bg);
     tft.setTextSize(2);
@@ -127,7 +129,7 @@ void drawMenu() {
 
   tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
   tft.setTextSize(1);
-  tft.drawString("Rotate: move  Press: confirm", 10, 226);
+  tft.drawString("Rotate: move  Press: confirm", 10, 242);
 }
 
 void drawWorldRowsOnly() {

@@ -25,7 +25,7 @@ static constexpr int ENC_DT  = 17;
 static constexpr int ENC_SW  = 18;
 
 /* ================= INPUT / STORAGE ================= */
-static constexpr uint32_t LONG_PRESS_MS = 5000;
+static constexpr uint32_t LONG_PRESS_MS = 2000;
 static constexpr uint32_t DEBOUNCE_MS = 35;
 static const char* PREF_NS = "status-tz";
 static const char* KEY_TZ_INDEX = "tz_idx";
@@ -424,8 +424,8 @@ void handleTimezoneList() {
       drawTimeEditor();
       drawTimeEditorFieldsOnly();
     } else {
-      screenState = SCREEN_EMOJI_HOME;
-      drawEmojiHome();
+      screenState = SCREEN_MENU;
+      drawMenu();
     }
   }
 }
@@ -448,8 +448,8 @@ void handleTimeEdit() {
         screenState = SCREEN_EMOJI_HOME;
         drawEmojiHome();
       } else {
-        screenState = SCREEN_EMOJI_HOME;
-        drawEmojiHome();
+        screenState = SCREEN_MENU;
+        drawMenu();
       }
       return;
     }
@@ -494,8 +494,8 @@ void handleMenu() {
   int d = consumeEncoderStep();
   if (d != 0) {
     menuIndex += d;
-    if (menuIndex < 0) menuIndex = 2;
-    if (menuIndex > 2) menuIndex = 0;
+    if (menuIndex < 0) menuIndex = 3;
+    if (menuIndex > 3) menuIndex = 0;
     drawMenu();
   }
 
@@ -511,10 +511,13 @@ void handleMenu() {
       loadEditorFromCurrentOrDefault();
       drawTimeEditor();
       drawTimeEditorFieldsOnly();
-    } else {
+    } else if (menuIndex == 2) {
       screenState = SCREEN_WORLD_VIEW;
       worldBaseIndex = tzIndex;
       drawWorldView();
+    } else {
+      screenState = SCREEN_EMOJI_HOME;
+      drawEmojiHome();
     }
   }
 }
@@ -538,8 +541,8 @@ void handleWorldView() {
 
   if (takeShortPressEvent()) {
     clearButtonEvents();
-    screenState = SCREEN_EMOJI_HOME;
-    drawEmojiHome();
+    screenState = SCREEN_MENU;
+    drawMenu();
   }
 }
 
