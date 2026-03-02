@@ -10,3 +10,5 @@
 //
 // 1. Copy this file and rename it to "config.h"
 // 2. Modify the values above
+
+#endif  // CONFIG_H

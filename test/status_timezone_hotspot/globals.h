@@ -15,6 +15,15 @@
 #include <WiFi.h>
 
 /* =====================================================================
+   DEBUG SWITCH
+   NOTE: TFT data bus uses GPIO1, so UART0 TX logging can corrupt display.
+   Keep this OFF unless you rewire TFT data pins away from UART0.
+   ===================================================================== */
+#ifndef ENABLE_UART_DEBUG
+#define ENABLE_UART_DEBUG 0
+#endif
+
+/* =====================================================================
    TFT PIN CONFIG  (8-bit parallel, ILI9488)
    ===================================================================== */
 static constexpr int TFT_D0  = 1;
@@ -199,6 +208,7 @@ Rect     zPrev[3] = {{0,0,0,0},{0,0,0,0},{0,0,0,0}};
 // Wi-Fi page state
 int  wifiMenuIndex = 0;
 bool wifiResultOk  = false;
+bool wifiInited    = false;
 
 // Encoder
 volatile int32_t encDelta     = 0;

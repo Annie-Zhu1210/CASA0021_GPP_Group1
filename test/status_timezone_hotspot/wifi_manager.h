@@ -11,6 +11,12 @@
 #include "web_pages.h"
 #include "config.h"
 
+#if ENABLE_UART_DEBUG
+  #define DBG_LOG(msg) Serial.println(msg)
+#else
+  #define DBG_LOG(msg) do {} while (0)
+#endif
+
 static WebServer _wifiServer(80);
 static DNSServer _dnsServer;
 
@@ -72,14 +78,14 @@ static bool _attemptConnect(const char* ssid, const char* pass,
 void wifiInit() {
   _loadCredentials();
   if (_savedSSID.length() > 0) {
-    Serial.println("[WiFi] Boot connect to: " + _savedSSID);
+    DBG_LOG("[WiFi] Boot connect to: " + _savedSSID);
     _attemptConnect(_savedSSID.c_str(), _savedPassword.c_str());
     if (WiFi.status() == WL_CONNECTED)
-      Serial.println("[WiFi] Connected. IP: " + WiFi.localIP().toString());
+      DBG_LOG("[WiFi] Connected. IP: " + WiFi.localIP().toString());
     else
-      Serial.println("[WiFi] Boot connect failed — will retry in background.");
+      DBG_LOG("[WiFi] Boot connect failed - will retry in background.");
   } else {
-    Serial.println("[WiFi] No saved credentials.");
+    DBG_LOG("[WiFi] No saved credentials.");
   }
 }
 
@@ -90,7 +96,7 @@ void wifiMaintainConnection() {
   uint32_t now = millis();
   if (now - _lastReconnectAttemptMs < RECONNECT_INTERVAL_MS) return;
   _lastReconnectAttemptMs = now;
-  Serial.println("[WiFi] Disconnected — retrying...");
+  DBG_LOG("[WiFi] Disconnected - retrying...");
   WiFi.begin(_savedSSID.c_str(), _savedPassword.c_str());
 }
 
@@ -98,7 +104,7 @@ static void _handleSave() {
   String newSSID = _wifiServer.arg("ssid");
   String newPass = _wifiServer.arg("password");
   String newPairing = _wifiServer.arg("pairing");
-  Serial.println("[WiFi] Form received. SSID: " + newSSID);
+  DBG_LOG("[WiFi] Form received. SSID: " + newSSID);
   _wifiServer.send(200, "text/html", success_html);
   _dnsServer.stop();
   _wifiServer.stop();
@@ -106,7 +112,7 @@ static void _handleSave() {
   _saveCredentials(newSSID, newPass, newPairing);
   _hotspotState = HotspotState::SUBMITTED;
   bool ok = _attemptConnect(newSSID.c_str(), newPass.c_str());
-  Serial.println(ok ? "[WiFi] Connected!" : "[WiFi] Connection failed.");
+  DBG_LOG(ok ? "[WiFi] Connected!" : "[WiFi] Connection failed.");
   wifiResultOk = ok;
   _hotspotState = HotspotState::DONE;
 }
@@ -118,7 +124,7 @@ void wifiStartHotspot() {
   WiFi.mode(WIFI_AP);
   WiFi.softAP(AP_SSID, AP_PASSWORD);
   IPAddress ip = WiFi.softAPIP();
-  Serial.println("[WiFi] AP started. IP: " + ip.toString());
+  DBG_LOG("[WiFi] AP started. IP: " + ip.toString());
   _dnsServer.start(53, "*", ip);
   _wifiServer.on("/", HTTP_GET, []() {
     _wifiServer.send(200, "text/html", index_html);
@@ -128,7 +134,7 @@ void wifiStartHotspot() {
     _wifiServer.send(200, "text/html", index_html);
   });
   _wifiServer.begin();
-  Serial.println("[WiFi] Captive portal running on SSID: " AP_SSID);
+  DBG_LOG("[WiFi] Captive portal running on SSID: " AP_SSID);
 }
 
 bool wifiPollHotspot() {

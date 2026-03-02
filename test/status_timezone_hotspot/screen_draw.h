@@ -21,7 +21,9 @@ uint16_t rgb565(uint8_t r, uint8_t g, uint8_t b) {
 
 // Wi-Fi Status
 void drawWiFiIndicator() {
-  const int ox = 270, oy = 8, iw = 30, ih = 22;
+  const int iw = 30, ih = 22;
+  const int ox = tft.width() - iw - 8;
+  const int oy = 8;
   tft.fillRect(ox, oy, iw, ih, TFT_BLACK);
   bool connected = (WiFi.status() == WL_CONNECTED);
   uint16_t barCol = connected ? TFT_GREEN : tft.color565(80, 80, 80);
@@ -71,8 +73,31 @@ void drawButton(int x, int y, int w, int h,
 }
 
 // Emojis
-void clearCenterIconArea(int cx, int cy) {
-  tft.fillRect(cx - 110, cy - 110, 220, 220, TFT_BLACK);
+Rect getEmojiClearRect(MyStatus status, int cx, int cy) {
+  // Keep the clear area tight to each emoji/status drawing footprint.
+  if (status == ST_SLEEPING) {
+    // Sleeping bear + moving Zzz occupy a wider and taller region.
+    return { cx - 122, cy - 92, 244, 206 };
+  }
+  // Face/heart/busy icons are close to a 90x90 footprint at current SCALE.
+  return { cx - 66, cy - 66, 132, 132 };
+}
+
+void clearCenterIconArea(MyStatus status, int cx, int cy) {
+  Rect r = getEmojiClearRect(status, cx, cy);
+  const int safeTop = 58;  // reserve top info strip (time + icons)
+  if (r.y < safeTop) {
+    int cut = safeTop - r.y;
+    r.y = safeTop;
+    r.h -= cut;
+  }
+  if (r.x < 0) {
+    r.w += r.x;
+    r.x = 0;
+  }
+  if (r.x + r.w > tft.width()) r.w = tft.width() - r.x;
+  if (r.y + r.h > tft.height()) r.h = tft.height() - r.y;
+  if (r.w > 0 && r.h > 0) tft.fillRect(r.x, r.y, r.w, r.h, TFT_BLACK);
 }
 
 void drawThickCircle(int x, int y, int r, int thickness, uint16_t color) {
@@ -265,7 +290,6 @@ void drawZzzOnly(int cx, int cy) {
 }
 
 void startSleepScene(int cx, int cy) {
-  clearCenterIconArea(cx, cy);
   drawSleepingBearStatic(cx, cy);
   for (int i = 0; i < 3; i++) zPrev[i] = { 0, 0, 0, 0 };
   eraseOldZzz();
@@ -283,15 +307,19 @@ void updateZzzAnimation(int cx, int cy) {
 
 // Emoji Home screen
 void drawPartnerIconTopRight() {
-  int px = 210, py = 22;
+  const int wifiW = 30;
+  const int wifiX = tft.width() - wifiW - 8;
+  int px = wifiX - 18;
+  int py = 20;
   float oldScale = SCALE;
-  SCALE = 0.9f;
+  SCALE = 0.35f;
   if (partnerStatus == ST_MISS_YOU) drawHeart(px, py);
   else tft.fillCircle(px, py, 10, TFT_GREEN);
   SCALE = oldScale;
 }
 
 void drawTopLeftInfoStatic() {
+  tft.setTextDatum(lgfx::top_left);
   tft.fillRoundRect(8, 8, 150, 48, 5, TFT_NAVY);
   tft.drawRoundRect(8, 8, 150, 48, 5, TFT_DARKGREY);
   tft.setTextColor(TFT_CYAN, TFT_NAVY);
@@ -305,6 +333,7 @@ void drawTopLeftInfoStatic() {
 
 void drawTopLeftTimeOnly() {
   if (!homeOverlayDrawn) return;
+  tft.setTextDatum(lgfx::top_left);
   struct tm ti;
   tft.fillRect(14, 30, 128, 16, TFT_NAVY);
   if (!getLocalTimeSafe(&ti)) {
@@ -325,13 +354,8 @@ void drawEmojiHome() {
   timeEditStaticDrawn = false;
   tft.fillScreen(TFT_BLACK);
   sleepSceneDrawn = false;
-  drawPartnerIconTopRight();
-  drawWiFiIndicator();
-  drawTopLeftInfoStatic();
-  drawTopLeftTimeOnly();
   int cx = tft.width() / 2;
   int cy = tft.height() / 2 - 20;
-  clearCenterIconArea(cx, cy);
   switch (myStatus) {
     case ST_FREE: drawHappyFace(cx, cy); break;
     case ST_BUSY: drawBusyIcon(cx, cy); break;
@@ -344,6 +368,10 @@ void drawEmojiHome() {
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.setTextDatum(lgfx::textdatum_t::middle_center);
   tft.drawString(statusText[(int)myStatus], tft.width() / 2, tft.height() - 40);
+  drawPartnerIconTopRight();
+  drawWiFiIndicator();
+  drawTopLeftInfoStatic();
+  drawTopLeftTimeOnly();
   tft.setTextDatum(lgfx::textdatum_t::top_left);
   lastHomeSecond = -1;
 }

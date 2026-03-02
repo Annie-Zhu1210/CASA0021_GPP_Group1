@@ -12,6 +12,7 @@
 
 #include <Preferences.h>
 #include <math.h>
+#include <esp_log.h>
 #include <sys/time.h>
 #include <time.h>
 
@@ -49,6 +50,12 @@ void IRAM_ATTR onEncChange() {
   uint8_t idx = (uint8_t)((encPrevState << 2) | curr);
   encDelta += trans[idx];
   encPrevState = curr;
+}
+
+void ensureWifiInit() {
+  if (wifiInited) return;
+  wifiInit();
+  wifiInited = true;
 }
 
 int consumeEncoderStep() {
@@ -257,8 +264,8 @@ void handleTimezoneList() {
       drawTimeEditor();
       drawTimeEditorFieldsOnly();
     } else {
-      screenState = SCREEN_MENU;
-      drawMenu();
+      screenState = SCREEN_EMOJI_HOME;
+      drawEmojiHome();
     }
   }
 }
@@ -280,8 +287,8 @@ void handleTimeEdit() {
         screenState = SCREEN_EMOJI_HOME;
         drawEmojiHome();
       } else {
-        screenState = SCREEN_MENU;
-        drawMenu();
+        screenState = SCREEN_EMOJI_HOME;
+        drawEmojiHome();
       }
       return;
     }
@@ -316,7 +323,6 @@ void handleEmojiHome() {
   if (myStatus == ST_SLEEPING && sleepSceneDrawn) {
     updateZzzAnimation(tft.width() / 2, tft.height() / 2 - 20);
   }
-  wifiMaintainConnection();
 }
 
 void handleMenu() {
@@ -376,13 +382,13 @@ void handleWorldView() {
   }
   if (takeShortPressEvent()) {
     clearButtonEvents();
-    screenState = SCREEN_MENU;
-    drawMenu();
+    screenState = SCREEN_EMOJI_HOME;
+    drawEmojiHome();
   }
-  wifiMaintainConnection();
 }
 
 void handleWiFiInfo() {
+  ensureWifiInit();
   int d = consumeEncoderStep();
   if (d != 0) {
     wifiMenuIndex += d;
@@ -404,6 +410,7 @@ void handleWiFiInfo() {
 }
 
 void handleWiFiConnecting() {
+  ensureWifiInit();
   consumeEncoderStep();
   clearButtonEvents();
   if (wifiPollHotspot()) {
@@ -414,6 +421,7 @@ void handleWiFiConnecting() {
 }
 
 void handleWiFiResult() {
+  ensureWifiInit();
   consumeEncoderStep();
   if (takeShortPressEvent()) {
     clearButtonEvents();
@@ -425,7 +433,11 @@ void handleWiFiResult() {
 
 // Set-up and loop
 void setup() {
+#if ENABLE_UART_DEBUG
   Serial.begin(115200);
+#else
+  esp_log_level_set("*", ESP_LOG_NONE);
+#endif
 
   tft.init();
   tft.setRotation(3);
@@ -440,7 +452,6 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(ENC_DT), onEncChange, CHANGE);
 
   loadTimezoneSetting();
-  wifiInit();
 
   startupFlow = true;
   screenState = SCREEN_TZ_LIST;
