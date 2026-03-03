@@ -3,7 +3,6 @@
  * Please copy the config.example.h  file to config.h first and fill in your AP_SSID / AP_PASSWORD
  */
 
-
 #include "globals.h"
 #include "config.h"
 #include "web_pages.h"
@@ -32,8 +31,8 @@ void drawWorldView();
 void drawWorldRowsOnly();
 void resetWorldClockCache();
 void drawEmojiHome();
-void drawTopLeftTimeOnly();
-void updateZzzAnimation(int cx, int cy);
+void tickEmojiHome();
+void drawSelfEmoji();
 void drawWiFiInfoPage();
 void drawWiFiConnectingPage();
 void drawWiFiResultPage(bool success);
@@ -282,14 +281,9 @@ void handleTimeEdit() {
     if (editField > 4) {
       applyManualDateTime();
       clearButtonEvents();
-      if (startupFlow) {
-        startupFlow = false;
-        screenState = SCREEN_EMOJI_HOME;
-        drawEmojiHome();
-      } else {
-        screenState = SCREEN_EMOJI_HOME;
-        drawEmojiHome();
-      }
+      startupFlow = false;
+      screenState = SCREEN_EMOJI_HOME;
+      drawEmojiHome();
       return;
     }
     if (!timeEditStaticDrawn) drawTimeEditor();
@@ -304,7 +298,8 @@ void handleEmojiHome() {
     if (next < 0) next = ST_COUNT - 1;
     if (next >= ST_COUNT) next = 0;
     myStatus = (MyStatus)next;
-    drawEmojiHome();
+    drawSelfEmoji();
+    return;
   }
   if (takeLongPressEvent()) {
     clearButtonEvents();
@@ -314,15 +309,7 @@ void handleEmojiHome() {
     drawMenu();
     return;
   }
-  time_t now = time(nullptr);
-  if (now > 100000 && now != lastHomeSecond) {
-    lastHomeSecond = now;
-    drawTopLeftTimeOnly();
-    drawWiFiIndicator();
-  }
-  if (myStatus == ST_SLEEPING && sleepSceneDrawn) {
-    updateZzzAnimation(tft.width() / 2, tft.height() / 2 - 20);
-  }
+  tickEmojiHome();
 }
 
 void handleMenu() {
@@ -431,7 +418,7 @@ void handleWiFiResult() {
   }
 }
 
-// Set-up and loop
+// Setup and loop
 void setup() {
 #if ENABLE_UART_DEBUG
   Serial.begin(115200);

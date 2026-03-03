@@ -8,24 +8,18 @@
  * top of screen_draw.h and wifi_manager.h.
  */
 
+
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
 #include <LovyanGFX.hpp>
 #include <WiFi.h>
 
-/* =====================================================================
-   DEBUG SWITCH
-   NOTE: TFT data bus uses GPIO1, so UART0 TX logging can corrupt display.
-   Keep this OFF unless you rewire TFT data pins away from UART0.
-   ===================================================================== */
 #ifndef ENABLE_UART_DEBUG
 #define ENABLE_UART_DEBUG 0
 #endif
 
-/* =====================================================================
-   TFT PIN CONFIG  (8-bit parallel, ILI9488)
-   ===================================================================== */
+
 static constexpr int TFT_D0  = 1;
 static constexpr int TFT_D1  = 2;
 static constexpr int TFT_D2  = 3;
@@ -39,9 +33,6 @@ static constexpr int TFT_DC  = 9;
 static constexpr int TFT_WR  = 8;
 static constexpr int TFT_RST = 14;
 
-/* =====================================================================
-   LGFX CLASS DEFINITION
-   ===================================================================== */
 class LGFX : public lgfx::LGFX_Device {
   lgfx::Panel_ILI9488 _panel;
   lgfx::Bus_Parallel8 _bus;
@@ -76,9 +67,6 @@ public:
   }
 };
 
-/* =====================================================================
-   SHARED STRUCT DEFINITIONS
-   ===================================================================== */
 struct TimezoneOption {
   const char* label;
   const char* posix;
@@ -87,9 +75,6 @@ struct TimezoneOption {
 
 struct Rect { int x, y, w, h; };
 
-/* =====================================================================
-   ENUMS
-   ===================================================================== */
 enum ScreenState {
   SCREEN_TZ_LIST = 0,
   SCREEN_TIME_EDIT,
@@ -110,19 +95,12 @@ enum MyStatus {
   ST_COUNT
 };
 
-/* =====================================================================
-   NVS KEY CONSTANTS
-   (defined here once — no static/extern conflict)
-   ===================================================================== */
 const char* const PREF_NS      = "ld-device";
 const char* const KEY_TZ_INDEX = "tz_idx";
 const char* const KEY_SSID     = "ssid";
 const char* const KEY_PASSWORD = "password";
 const char* const KEY_PAIRING  = "pairing";
 
-/* =====================================================================
-   TIMEZONE TABLE
-   ===================================================================== */
 TimezoneOption kTimezones[] = {
   {"UTC-12","UTC+12","USA (Baker Is.)"},
   {"UTC-11","UTC+11","USA (Samoa) / Niue"},
@@ -154,25 +132,28 @@ TimezoneOption kTimezones[] = {
 };
 const int TZ_COUNT = sizeof(kTimezones) / sizeof(kTimezones[0]);
 
-/* =====================================================================
-   TFT GLOBAL OBJECT
-   ===================================================================== */
 LGFX tft;
-
-/* =====================================================================
-   ALL GLOBAL VARIABLES
-   ===================================================================== */
 
 // Screen & status state
 ScreenState screenState   = SCREEN_TZ_LIST;
 MyStatus    myStatus      = ST_FREE;
-MyStatus    partnerStatus = ST_MISS_YOU;
+
+// Partner status & timezone — defaults for pre-MQTT layout testing
+// partnerStatus: ST_MISS_YOU shows the heart emoji in the centre
+// partnerTzIndex: 20 = UTC+08 (China/Singapore) — change to taste
+MyStatus    partnerStatus  = ST_MISS_YOU;
+int         partnerTzIndex = 20;
+
+// Partner time override for pre-MQTT testing (shown as 0:00:00 until MQTT updates it)
+// When MQTT is integrated, set partnerTimeValid = true and partnerEpoch = received epoch
+bool        partnerTimeValid = false;
+time_t      partnerEpoch     = 0;
 
 const char* statusText[ST_COUNT] = {
   "FREE", "BUSY", "SLEEPING", "MISS YOU", "BAD DAY"
 };
 
-// Timezone & menu navigation
+// Timezone and menu navigation
 int  tzIndex        = 0;
 int  tzListIndex    = 0;
 int  menuIndex      = 0;
@@ -205,6 +186,11 @@ uint32_t zLastMs = 0;
 uint8_t  zFrame  = 0;
 Rect     zPrev[3] = {{0,0,0,0},{0,0,0,0},{0,0,0,0}};
 
+// Partner sleeping-bear Zzz
+uint32_t zLastMsSmall = 0;
+uint8_t  zFrameSmall  = 0;
+Rect     zPrevSmall[3] = {{0,0,0,0},{0,0,0,0},{0,0,0,0}};
+
 // Wi-Fi page state
 int  wifiMenuIndex = 0;
 bool wifiResultOk  = false;
@@ -217,4 +203,4 @@ volatile uint8_t encPrevState = 0;
 bool gShortPressEvent = false;
 bool gLongPressEvent  = false;
 
-#endif // GLOBALS_H
+#endif
