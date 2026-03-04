@@ -1,6 +1,6 @@
 /*
- * This file includes the status, the timezone and the hotspot-Wi-Fi connection functionalities.
- * Please copy the config.example.h  file to config.h first and fill in your AP_SSID / AP_PASSWORD
+ * This file includes the status, the timezone, the hotspot-Wi-Fi connection, and the data transaction functionalities.
+ * Please copy the config.example.h  file to config.h first and fill in your AP_SSID / AP_PASSWORD / MQTT credentials
  */
 
 #include "globals.h"
@@ -8,6 +8,7 @@
 #include "web_pages.h"
 #include "wifi_manager.h"
 #include "screen_draw.h"
+#include "mqtt_manager.h"
 
 #include <Preferences.h>
 #include <math.h>
@@ -298,6 +299,7 @@ void handleEmojiHome() {
     if (next < 0) next = ST_COUNT - 1;
     if (next >= ST_COUNT) next = 0;
     myStatus = (MyStatus)next;
+    mqttPublishStatusNow();
     drawSelfEmoji();
     return;
   }
@@ -445,6 +447,7 @@ void setup() {
   tzListIndex = tzIndex;
   drawTimezoneList();
   drawTimezoneListRowsOnly();
+  mqttInit();
 }
 
 void loop() {
@@ -463,4 +466,5 @@ void loop() {
   }
 
   delay(8);
+  mqttLoop();
 }

@@ -10,11 +10,14 @@
 #include <Preferences.h>
 #include "web_pages.h"
 #include "config.h"
+#include <esp_task_wdt.h>
 
 #if ENABLE_UART_DEBUG
-  #define DBG_LOG(msg) Serial.println(msg)
+#define DBG_LOG(msg) Serial.println(msg)
 #else
-  #define DBG_LOG(msg) do {} while (0)
+#define DBG_LOG(msg) \
+  do { \
+  } while (0)
 #endif
 
 static WebServer _wifiServer(80);
@@ -66,10 +69,12 @@ static bool _attemptConnect(const char* ssid, const char* pass,
     int attempts = 0;
     while (WiFi.status() != WL_CONNECTED && attempts < 20) {
       delay(500);
+      esp_task_wdt_reset();
       attempts++;
     }
     if (WiFi.status() == WL_CONNECTED) return true;
     delay(1000);
+    esp_task_wdt_reset();
     WiFi.begin(ssid, pass);
   }
   return (WiFi.status() == WL_CONNECTED);
@@ -77,16 +82,16 @@ static bool _attemptConnect(const char* ssid, const char* pass,
 
 void wifiInit() {
   _loadCredentials();
-  if (_savedSSID.length() > 0) {
-    DBG_LOG("[WiFi] Boot connect to: " + _savedSSID);
-    _attemptConnect(_savedSSID.c_str(), _savedPassword.c_str());
-    if (WiFi.status() == WL_CONNECTED)
-      DBG_LOG("[WiFi] Connected. IP: " + WiFi.localIP().toString());
-    else
-      DBG_LOG("[WiFi] Boot connect failed - will retry in background.");
-  } else {
+  if (_savedSSID.length() == 0) {
     DBG_LOG("[WiFi] No saved credentials.");
+    return;
   }
+  DBG_LOG("[WiFi] Boot connect to: " + _savedSSID);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(_savedSSID.c_str(), _savedPassword.c_str());
+  // Non-blocking — just kick off the connection, don't wait for it
+  // wifiMaintainConnection() will retry in the background via loop()
+  DBG_LOG("[WiFi] Connection started in background.");
 }
 
 void wifiMaintainConnection() {
