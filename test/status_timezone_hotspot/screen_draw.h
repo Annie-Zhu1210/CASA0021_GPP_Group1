@@ -460,11 +460,22 @@ void drawEmojiHome() {
   drawSelfEmoji();
 
   homeOverlayDrawn = true;
+  partnerStatusDirty = false;
+  partnerInfoDirty = false;
   lastHomeSecond = -1;
 }
 
 // Home screen tick
 void tickEmojiHome() {
+  if (partnerStatusDirty) {
+    drawPartnerEmoji();
+    drawPartnerLabel();
+    partnerStatusDirty = false;
+  }
+  if (partnerInfoDirty) {
+    drawPartnerInfoStrip();
+    partnerInfoDirty = false;
+  }
   time_t now = time(nullptr);
   if (now > 100000 && now != lastHomeSecond) {
     lastHomeSecond = now;

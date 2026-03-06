@@ -148,6 +148,8 @@ int         partnerTzIndex = 20;
 // When MQTT is integrated, set partnerTimeValid = true and partnerEpoch = received epoch
 bool        partnerTimeValid = false;
 time_t      partnerEpoch     = 0;
+bool        partnerStatusDirty = false;
+bool        partnerInfoDirty   = false;
 
 const char* statusText[ST_COUNT] = {
   "FREE", "BUSY", "SLEEPING", "MISS YOU", "BAD DAY"

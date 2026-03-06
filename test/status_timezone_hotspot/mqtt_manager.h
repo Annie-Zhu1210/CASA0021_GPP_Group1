@@ -90,9 +90,7 @@ static void _mqttCallback(char* topic, byte* payload, unsigned int length) {
       MyStatus incoming = (MyStatus)s;
       if (incoming != partnerStatus) {
         partnerStatus = incoming;
-        if (screenState == SCREEN_EMOJI_HOME) {
-          homeOverlayDrawn = false;
-        }
+        partnerStatusDirty = true;
       }
     }
   } else if (strcmp(topic, TOPIC_PT_TIME) == 0) {
@@ -100,11 +98,13 @@ static void _mqttCallback(char* topic, byte* payload, unsigned int length) {
     if (epoch > 100000) {
       partnerEpoch = (time_t)epoch;
       partnerTimeValid = true;
+      partnerInfoDirty = true;
     }
   } else if (strcmp(topic, TOPIC_PT_TZ) == 0) {
     int idx = atoi(buf);
     if (idx >= 0 && idx < TZ_COUNT) {
       partnerTzIndex = idx;
+      partnerInfoDirty = true;
     }
   }
 }
