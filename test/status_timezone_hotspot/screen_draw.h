@@ -658,8 +658,15 @@ void drawWiFiInfoPage() {
   tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
   tft.drawString("Enter your home Wi-Fi and Pairing", 10, 80);
   tft.drawString("Code. Repeat when changing network.", 10, 96);
-  tft.drawString("Settings are saved automatically -", 10, 114);
-  tft.drawString("you only need to do this once.", 10, 130);
+  tft.drawString("Current Wi-Fi:", 10, 114);
+  if (WiFi.status() == WL_CONNECTED) {
+    tft.setTextColor(TFT_GREEN, TFT_BLACK);
+    String ssid = WiFi.SSID();
+    tft.drawString(ssid.length() ? ssid : "(hidden)", 10, 130);
+  } else {
+    tft.setTextColor(TFT_ORANGE, TFT_BLACK);
+    tft.drawString("Not connected", 10, 130);
+  }
   tft.drawFastHLine(10, 144, tft.width() - 20, TFT_DARKGREY);
   int bw = tft.width() - 20;
   drawButton(10, 152, bw, 44, "Start to Connect", wifiMenuIndex == 0);

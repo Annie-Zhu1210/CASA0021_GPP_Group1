@@ -246,6 +246,13 @@ void adjustEditField(int delta) {
 
 // Screen handling
 void handleTimezoneList() {
+  static uint32_t lastWifiIconMs = 0;
+  uint32_t nowMs = millis();
+  if (nowMs - lastWifiIconMs >= 500) {
+    lastWifiIconMs = nowMs;
+    drawWiFiIndicator();
+  }
+
   int d = consumeEncoderStep();
   if (d != 0) {
     tzListIndex += d;
@@ -271,6 +278,13 @@ void handleTimezoneList() {
 }
 
 void handleTimeEdit() {
+  static uint32_t lastWifiIconMs = 0;
+  uint32_t nowMs = millis();
+  if (nowMs - lastWifiIconMs >= 500) {
+    lastWifiIconMs = nowMs;
+    drawWiFiIndicator();
+  }
+
   int d = consumeEncoderStep();
   if (d != 0) {
     adjustEditField(d);
@@ -441,6 +455,8 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(ENC_DT), onEncChange, CHANGE);
 
   loadTimezoneSetting();
+  wifiInit();
+  wifiInited = true;
 
   startupFlow = true;
   screenState = SCREEN_TZ_LIST;
@@ -465,6 +481,7 @@ void loop() {
     default: break;
   }
 
+  wifiMaintainConnection();
   delay(8);
   mqttLoop();
 }
