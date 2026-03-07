@@ -76,8 +76,11 @@ struct TimezoneOption {
 struct Rect { int x, y, w, h; };
 
 enum ScreenState {
-  SCREEN_TZ_LIST = 0,
+  SCREEN_WELCOME = 0,
+  SCREEN_BOOT_NETWORK,
+  SCREEN_TZ_LIST,
   SCREEN_TIME_EDIT,
+  SCREEN_DATE_TIME_MENU,
   SCREEN_EMOJI_HOME,
   SCREEN_MENU,
   SCREEN_WORLD_VIEW,
@@ -97,6 +100,7 @@ enum MyStatus {
 
 const char* const PREF_NS      = "ld-device";
 const char* const KEY_TZ_INDEX = "tz_idx";
+const char* const KEY_AUTO_TIME = "auto_time";
 const char* const KEY_SSID     = "ssid";
 const char* const KEY_PASSWORD = "password";
 const char* const KEY_PAIRING  = "pairing";
@@ -135,7 +139,7 @@ const int TZ_COUNT = sizeof(kTimezones) / sizeof(kTimezones[0]);
 LGFX tft;
 
 // Screen & status state
-ScreenState screenState   = SCREEN_TZ_LIST;
+ScreenState screenState   = SCREEN_WELCOME;
 MyStatus    myStatus      = ST_FREE;
 
 // Partner status & timezone — defaults for pre-MQTT layout testing
@@ -159,8 +163,17 @@ const char* statusText[ST_COUNT] = {
 int  tzIndex        = 0;
 int  tzListIndex    = 0;
 int  menuIndex      = 0;
+int  bootMenuIndex  = 0;
+int  dateTimeMenuIndex = 0;
 int  worldBaseIndex = 0;
-bool startupFlow    = true;
+bool startupFlow    = false;
+bool wifiFromBootFlow = false;
+bool fromDateTimeMenu = false;
+
+// Date/time auto mode
+bool autoTimeEnabled = true;
+bool autoTimeSynced = false;
+uint32_t autoTimeLastAttemptMs = 0;
 
 // Time editor fields
 int editYear   = 2026, editMonth  = 1, editDay    = 1;
@@ -171,6 +184,12 @@ float  SCALE           = 1.2f;
 bool   homeOverlayDrawn = false;
 time_t lastHomeSecond   = -1;
 bool   sleepSceneDrawn  = false;
+int    homeWifiIconState = -1;
+int    headerWifiIconState = -1;
+int    prevSelfHour = -1, prevSelfMinute = -1, prevSelfSecond = -1;
+int    prevPartnerHour = -1, prevPartnerMinute = -1, prevPartnerSecond = -1;
+bool   prevSelfTimeValid = false;
+bool   prevPartnerTimeValid = false;
 
 // World clock dirty-flags
 bool worldLayoutReady      = false;

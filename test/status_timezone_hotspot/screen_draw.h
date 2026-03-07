@@ -14,6 +14,8 @@
 bool getLocalTimeSafe(struct tm* out);
 bool getTimeInZone(int idx, time_t baseNow, struct tm* out);
 void resetWorldClockCache();
+void drawPartnerTimeOnly();
+void drawSelfPanelTimeOnly();
 
 uint16_t rgb565(uint8_t r, uint8_t g, uint8_t b) {
   return tft.color565(r, g, b);
@@ -59,9 +61,12 @@ inline uint16_t warmBg() {
 
 // Wi-Fi indicator
 
-void drawHomeWiFiIndicator() {
-  tft.fillRect(WIFI_IX, WIFI_IY, WIFI_IW, WIFI_IH, TFT_BLACK);
+void drawHomeWiFiIndicator(bool force = false) {
   bool connected = (WiFi.status() == WL_CONNECTED);
+  int state = connected ? 1 : 0;
+  if (!force && homeWifiIconState == state) return;
+  homeWifiIconState = state;
+  tft.fillRect(WIFI_IX, WIFI_IY, WIFI_IW, WIFI_IH, TFT_BLACK);
   uint16_t col = connected ? TFT_GREEN : tft.color565(80, 80, 80);
   struct {
     int x, y, w, h;
@@ -76,10 +81,13 @@ void drawHomeWiFiIndicator() {
   }
 }
 
-void drawWiFiIndicator() {
+void drawWiFiIndicator(bool force = false) {
   const int iw = 30, ih = 22, ox = tft.width() - iw - 8, oy = 8;
-  tft.fillRect(ox, oy, iw, ih, TFT_BLACK);
   bool connected = (WiFi.status() == WL_CONNECTED);
+  int state = connected ? 1 : 0;
+  if (!force && headerWifiIconState == state) return;
+  headerWifiIconState = state;
+  tft.fillRect(ox, oy, iw, ih, TFT_BLACK);
   uint16_t col = connected ? TFT_GREEN : tft.color565(80, 80, 80);
   struct {
     int x, y, w, h;
@@ -102,7 +110,7 @@ void drawHeader(const char* title) {
   tft.setTextDatum(lgfx::top_left);
   tft.drawString(title, 10, 10);
   tft.drawFastHLine(10, 36, tft.width() - 20, TFT_DARKGREY);
-  drawWiFiIndicator();
+  drawWiFiIndicator(true);
 }
 
 // Button
@@ -306,6 +314,77 @@ void updateZzzAnimation(int cx, int cy) {
 }
 
 // Partner information strip
+void drawClockField2(int x, int y, int value, uint16_t fg, uint16_t bg, int digitW, int charH) {
+  char b[3];
+  snprintf(b, sizeof(b), "%02d", value);
+  tft.fillRect(x, y, digitW * 2, charH, bg);
+  tft.setTextColor(fg, bg);
+  tft.drawString(b, x, y);
+}
+
+void drawClockDigit1(int x, int y, int digit, uint16_t fg, uint16_t bg, int digitW, int charH) {
+  char c[2] = { (char)('0' + digit), '\0' };
+  tft.fillRect(x, y, digitW, charH, bg);
+  tft.setTextColor(fg, bg);
+  tft.drawString(c, x, y);
+}
+
+void drawClockHmsIncremental(int x, int y, int textSize, uint16_t fg, uint16_t bg,
+                             int h, int m, int s,
+                             int& prevH, int& prevM, int& prevS,
+                             bool& prevValid, bool validNow) {
+  tft.setTextDatum(lgfx::top_left);
+  tft.setTextSize(textSize);
+  int digitW = tft.textWidth("0");
+  int colonW = tft.textWidth(":");
+  int charH = tft.fontHeight();
+  int hX = x;
+  int c1X = hX + digitW * 2;
+  int mX = c1X + colonW;
+  int c2X = mX + digitW * 2;
+  int sX = c2X + colonW;
+
+  if (!validNow) {
+    if (prevValid || prevH != -2 || prevM != -2 || prevS != -2) {
+      tft.fillRect(x, y, digitW * 6 + colonW * 2, charH, bg);
+      tft.setTextColor(TFT_ORANGE, bg);
+      tft.drawString("00:00:00", x, y);
+    }
+    prevValid = false;
+    prevH = prevM = prevS = -2;
+    return;
+  }
+
+  bool full = !prevValid || prevH < 0 || prevM < 0 || prevS < 0;
+  prevValid = true;
+
+  if (full) {
+    drawClockField2(hX, y, h, fg, bg, digitW, charH);
+    tft.setTextColor(fg, bg);
+    tft.drawString(":", c1X, y);
+    drawClockField2(mX, y, m, fg, bg, digitW, charH);
+    tft.drawString(":", c2X, y);
+    drawClockField2(sX, y, s, fg, bg, digitW, charH);
+    prevH = h;
+    prevM = m;
+    prevS = s;
+    return;
+  }
+
+  if (h != prevH) drawClockField2(hX, y, h, fg, bg, digitW, charH);
+  if (m != prevM) drawClockField2(mX, y, m, fg, bg, digitW, charH);
+  if (s != prevS) {
+    int prevTens = prevS / 10;
+    int newTens = s / 10;
+    if (newTens != prevTens) drawClockDigit1(sX, y, newTens, fg, bg, digitW, charH);
+    drawClockDigit1(sX + digitW, y, s % 10, fg, bg, digitW, charH);
+  }
+
+  prevH = h;
+  prevM = m;
+  prevS = s;
+}
+
 void drawPartnerInfoStrip() {
   tft.fillRect(PINFO_X, 0, PINFO_W, TOP_STRIP_H, TFT_BLACK);
   char label[16];
@@ -314,26 +393,14 @@ void drawPartnerInfoStrip() {
   tft.setTextSize(1);
   tft.setTextColor(TFT_CYAN, TFT_BLACK);
   tft.drawString(label, PINFO_X, PINFO_UTC_Y);
-  char timeBuf[10] = "0:00:00";
-  if (partnerTimeValid && partnerEpoch > 100000) {
-    struct tm ti;
-    const char* restore = kTimezones[tzIndex].posix;
-    setenv("TZ", kTimezones[partnerTzIndex].posix, 1);
-    tzset();
-    time_t ep = partnerEpoch;
-    localtime_r(&ep, &ti);
-    setenv("TZ", restore, 1);
-    tzset();
-    strftime(timeBuf, sizeof(timeBuf), "%H:%M:%S", &ti);
-  }
-  tft.setTextSize(2);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.drawString(timeBuf, PINFO_X, PINFO_TIME_Y);
+  prevPartnerHour = prevPartnerMinute = prevPartnerSecond = -1;
+  prevPartnerTimeValid = false;
+  drawPartnerTimeOnly();
 }
 
 void drawPartnerTimeOnly() {
-  tft.fillRect(PINFO_X, PINFO_TIME_Y, PINFO_W, 20, TFT_BLACK);
-  char timeBuf[10] = "0:00:00";
+  bool valid = false;
+  int h = 0, m = 0, s = 0;
   if (partnerTimeValid && partnerEpoch > 100000) {
     struct tm ti;
     const char* restore = kTimezones[tzIndex].posix;
@@ -343,12 +410,15 @@ void drawPartnerTimeOnly() {
     localtime_r(&ep, &ti);
     setenv("TZ", restore, 1);
     tzset();
-    strftime(timeBuf, sizeof(timeBuf), "%H:%M:%S", &ti);
+    h = ti.tm_hour;
+    m = ti.tm_min;
+    s = ti.tm_sec;
+    valid = true;
   }
-  tft.setTextDatum(lgfx::top_left);
-  tft.setTextSize(2);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.drawString(timeBuf, PINFO_X, PINFO_TIME_Y);
+  drawClockHmsIncremental(PINFO_X, PINFO_TIME_Y, 2, TFT_WHITE, TFT_BLACK,
+                          h, m, s,
+                          prevPartnerHour, prevPartnerMinute, prevPartnerSecond,
+                          prevPartnerTimeValid, valid);
 }
 
 // Self information strip
@@ -361,33 +431,22 @@ void drawSelfInfoStrip() {
   tft.setTextSize(1);
   tft.setTextColor(TFT_CYAN, bg);
   tft.drawString(label, SINFO_X, SINFO_UTC_Y);
-  struct tm ti;
-  if (getLocalTimeSafe(&ti)) {
-    char buf[10];
-    strftime(buf, sizeof(buf), "%H:%M:%S", &ti);
-    tft.setTextColor(TFT_WHITE, bg);
-    tft.drawString(buf, SINFO_X, SINFO_TIME_Y);
-  } else {
-    tft.setTextColor(TFT_ORANGE, bg);
-    tft.drawString("0:00:00", SINFO_X, SINFO_TIME_Y);
-  }
+  prevSelfHour = prevSelfMinute = prevSelfSecond = -1;
+  prevSelfTimeValid = false;
+  drawSelfPanelTimeOnly();
 }
 
 void drawSelfPanelTimeOnly() {
-  tft.fillRect(SINFO_X, SINFO_TIME_Y, SINFO_W, 12, warmBg());
   uint16_t bg = warmBg();
-  tft.setTextDatum(lgfx::top_left);
-  tft.setTextSize(1);
   struct tm ti;
-  if (getLocalTimeSafe(&ti)) {
-    char buf[10];
-    strftime(buf, sizeof(buf), "%H:%M:%S", &ti);
-    tft.setTextColor(TFT_WHITE, bg);
-    tft.drawString(buf, SINFO_X, SINFO_TIME_Y);
-  } else {
-    tft.setTextColor(TFT_ORANGE, bg);
-    tft.drawString("0:00:00", SINFO_X, SINFO_TIME_Y);
-  }
+  bool valid = getLocalTimeSafe(&ti);
+  int h = valid ? ti.tm_hour : 0;
+  int m = valid ? ti.tm_min : 0;
+  int s = valid ? ti.tm_sec : 0;
+  drawClockHmsIncremental(SINFO_X, SINFO_TIME_Y, 1, TFT_WHITE, bg,
+                          h, m, s,
+                          prevSelfHour, prevSelfMinute, prevSelfSecond,
+                          prevSelfTimeValid, valid);
 }
 
 // Self emoji
@@ -452,7 +511,8 @@ void drawEmojiHome() {
   tft.drawFastVLine(DIVIDER_X, 0, 320, tft.color565(60, 35, 38));
   tft.drawFastHLine(0, TOP_STRIP_H - 1, DIVIDER_X, TFT_DARKGREY);
 
-  drawHomeWiFiIndicator();
+  homeWifiIconState = -1;
+  drawHomeWiFiIndicator(true);
   drawPartnerInfoStrip();
   drawSelfInfoStrip();
   drawPartnerEmoji();
@@ -565,21 +625,176 @@ void drawTimeEditorFieldsOnly() {
   tft.setTextDatum(lgfx::top_left);
 }
 
+void drawTimeEditorFieldOnly(int i) {
+  const int x = 16, y = 118, w = 52, h = 40, gap = 8;
+  int values[5] = { editYear, editMonth, editDay, editHour, editMinute };
+  const char* labels[5] = { "YEAR", "MON", "DAY", "HOUR", "MIN" };
+  if (i < 0 || i > 4) return;
+  int bx = x + i * (w + gap);
+  bool sel = (i == editField);
+  uint16_t bg = sel ? TFT_DARKCYAN : TFT_BLACK;
+  tft.fillRoundRect(bx, y, w, h, 5, bg);
+  tft.drawRoundRect(bx, y, w, h, 5, TFT_DARKGREY);
+  tft.setTextColor(sel ? TFT_WHITE : TFT_LIGHTGREY, bg);
+  tft.setTextDatum(lgfx::top_center);
+  tft.setTextSize(1);
+  tft.drawString(labels[i], bx + w / 2, y + 3);
+  char buf[8];
+  if (i == 0) snprintf(buf, sizeof(buf), "%04d", values[i]);
+  else snprintf(buf, sizeof(buf), "%02d", values[i]);
+  tft.setTextSize(2);
+  tft.drawString(buf, bx + w / 2, y + 16);
+  tft.setTextDatum(lgfx::top_left);
+}
 
-// Setting Menu
-void drawMenu() {
+// Startup screens
+void drawWelcomePage() {
   tzListStaticDrawn = timeEditStaticDrawn = false;
-  drawHeader("Settings Menu");
-  const char* options[5] = { "Set timezone", "Set date & time", "World clocks", "Wi-Fi connection", "Back to Home" };
-  for (int i = 0; i < 5; i++) {
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextDatum(lgfx::middle_center);
+  tft.setTextColor(TFT_CYAN, TFT_BLACK);
+  tft.setTextSize(3);
+  tft.drawString("Welcome", tft.width() / 2, 58);
+  tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+  tft.setTextSize(2);
+  tft.drawString("Smart Desktop Companion", tft.width() / 2, 96);
+
+  float saved = SCALE;
+  SCALE = 0.7f;
+  drawHappyFace(tft.width() / 2 - 56, 175);
+  drawHeart(tft.width() / 2 + 56, 175);
+  SCALE = saved;
+
+  tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+  tft.setTextSize(2);
+  tft.drawString("Press to continue", tft.width() / 2, 280);
+  tft.setTextDatum(lgfx::top_left);
+}
+
+void drawBootNetworkStatusOnly() {
+  tft.fillRect(10, 86, tft.width() - 20, 56, TFT_BLACK);
+  bool connected = (WiFi.status() == WL_CONNECTED);
+  tft.setTextSize(2);
+  if (connected) {
+    tft.setTextColor(TFT_GREEN, TFT_BLACK);
+    tft.drawString("Connected Wi-Fi:", 10, 88);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    String ssid = WiFi.SSID();
+    tft.drawString(ssid.length() ? ssid : "(hidden)", 10, 112);
+  } else {
+    tft.setTextColor(TFT_ORANGE, TFT_BLACK);
+    tft.drawString("Wi-Fi not connected", 10, 88);
+    tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+    tft.drawString("You can setup now or skip", 10, 112);
+  }
+}
+
+void drawBootNetworkButtonsOnly() {
+  tft.fillRect(10, 160, tft.width() - 20, 108, TFT_BLACK);
+  int bw = tft.width() - 20;
+  drawButton(10, 164, bw, 44, "Setup Wi-Fi", bootMenuIndex == 0);
+  drawButton(10, 220, bw, 44, "Skip to Home", bootMenuIndex == 1, TFT_DARKGREEN);
+}
+
+void drawBootNetworkPage() {
+  tzListStaticDrawn = timeEditStaticDrawn = false;
+  drawHeader("Startup: Network");
+  tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+  tft.setTextSize(1);
+  tft.drawString("Check current network before entering home.", 10, 48);
+  drawBootNetworkStatusOnly();
+  drawBootNetworkButtonsOnly();
+  tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+  tft.setTextSize(1);
+  tft.drawString("Rotate: move   Press: confirm", 10, 272);
+}
+
+void drawDateTimeMenuDynamicOnly() {
+  tft.fillRect(10, 48, tft.width() - 20, 232, TFT_BLACK);
+
+  tft.setTextSize(2);
+  tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+  tft.drawString("Auto mode:", 10, 50);
+  tft.setTextColor(autoTimeEnabled ? TFT_GREEN : TFT_ORANGE, TFT_BLACK);
+  tft.drawString(autoTimeEnabled ? "ON" : "OFF", 150, 50);
+
+  tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+  tft.setTextSize(1);
+  tft.drawString("Auto mode uses network time + timezone detection.", 10, 74);
+
+  if (autoTimeEnabled) {
+    drawButton(10, 108, tft.width() - 20, 44, "Toggle Auto Time", dateTimeMenuIndex == 0);
+    drawButton(10, 164, tft.width() - 20, 44, "Back", dateTimeMenuIndex == 1, TFT_DARKGREEN);
+  } else {
+    drawButton(10, 108, tft.width() - 20, 36, "Toggle Auto Time", dateTimeMenuIndex == 0);
+    drawButton(10, 150, tft.width() - 20, 36, "Set Timezone", dateTimeMenuIndex == 1);
+    drawButton(10, 192, tft.width() - 20, 36, "Set Date & Time", dateTimeMenuIndex == 2);
+    drawButton(10, 234, tft.width() - 20, 36, "Back", dateTimeMenuIndex == 3, TFT_DARKGREEN);
+  }
+}
+
+void drawDateTimeMenuButtonsOnly(int prevIndex = -1, bool forceFull = false) {
+  auto drawOne = [&](int idx) {
+    if (autoTimeEnabled) {
+      if (idx == 0) drawButton(10, 108, tft.width() - 20, 44, "Toggle Auto Time", dateTimeMenuIndex == 0);
+      else if (idx == 1) drawButton(10, 164, tft.width() - 20, 44, "Back", dateTimeMenuIndex == 1, TFT_DARKGREEN);
+    } else {
+      if (idx == 0) drawButton(10, 108, tft.width() - 20, 36, "Toggle Auto Time", dateTimeMenuIndex == 0);
+      else if (idx == 1) drawButton(10, 150, tft.width() - 20, 36, "Set Timezone", dateTimeMenuIndex == 1);
+      else if (idx == 2) drawButton(10, 192, tft.width() - 20, 36, "Set Date & Time", dateTimeMenuIndex == 2);
+      else if (idx == 3) drawButton(10, 234, tft.width() - 20, 36, "Back", dateTimeMenuIndex == 3, TFT_DARKGREEN);
+    }
+  };
+
+  if (forceFull || prevIndex < 0) {
+    drawDateTimeMenuDynamicOnly();
+    return;
+  }
+  drawOne(prevIndex);
+  if (prevIndex != dateTimeMenuIndex) drawOne(dateTimeMenuIndex);
+}
+
+void drawDateTimeMenu() {
+  tzListStaticDrawn = timeEditStaticDrawn = false;
+  drawHeader("Settings: Date & Time");
+  drawDateTimeMenuDynamicOnly();
+
+  tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+  tft.setTextSize(1);
+  tft.drawString("Rotate: move   Press: confirm", 10, 284);
+}
+
+void drawMenuOptionsOnly() {
+  tft.fillRect(10, 44, tft.width() - 20, 176, TFT_BLACK);
+  const char* options[4] = { "Date & Time", "World clocks", "Wi-Fi connection", "Back to Home" };
+  for (int i = 0; i < 4; i++) {
     int y2 = 48 + i * 42;
     bool sel = (i == menuIndex);
-    uint16_t bg = sel ? ((i == 4) ? TFT_DARKGREEN : TFT_DARKCYAN) : TFT_BLACK;
+    uint16_t bg = sel ? ((i == 3) ? TFT_DARKGREEN : TFT_DARKCYAN) : TFT_BLACK;
     tft.fillRoundRect(10, y2 - 4, tft.width() - 20, 34, 6, bg);
     tft.setTextColor(sel ? TFT_WHITE : TFT_LIGHTGREY, bg);
     tft.setTextSize(2);
     tft.drawString(options[i], 18, y2);
   }
+}
+
+void drawMenuOptionOnly(int i) {
+  if (i < 0 || i > 3) return;
+  const char* options[4] = { "Date & Time", "World clocks", "Wi-Fi connection", "Back to Home" };
+  int y2 = 48 + i * 42;
+  bool sel = (i == menuIndex);
+  uint16_t bg = sel ? ((i == 3) ? TFT_DARKGREEN : TFT_DARKCYAN) : TFT_BLACK;
+  tft.fillRoundRect(10, y2 - 4, tft.width() - 20, 34, 6, bg);
+  tft.setTextColor(sel ? TFT_WHITE : TFT_LIGHTGREY, bg);
+  tft.setTextSize(2);
+  tft.drawString(options[i], 18, y2);
+}
+
+// Setting Menu
+void drawMenu() {
+  tzListStaticDrawn = timeEditStaticDrawn = false;
+  drawHeader("Settings Menu");
+  drawMenuOptionsOnly();
   tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
   tft.setTextSize(1);
   tft.drawString("Rotate: move   Press: confirm", 10, 258);
@@ -595,6 +810,33 @@ void resetWorldClockCache() {
 void drawWorldRowsOnly() {
   time_t now = time(nullptr);
   const int yTop = 56, rowH = 52;
+  tft.setTextSize(2);
+  int digitW = tft.textWidth("0");
+  int colonW = tft.textWidth(":");
+  int charH = tft.fontHeight();
+  const int hX = 149;
+  const int c1X = hX + digitW * 2;
+  const int mX = c1X + colonW;
+  const int c2X = mX + digitW * 2;
+  const int sX = c2X + colonW;
+
+  auto drawField2 = [&](int x, int y, int val, uint16_t fg, uint16_t bg) {
+    char b[3];
+    snprintf(b, sizeof(b), "%02d", val);
+    tft.fillRect(x, y, digitW * 2, charH, bg);
+    tft.setTextColor(fg, bg);
+    tft.setTextSize(2);
+    tft.drawString(b, x, y);
+  };
+
+  auto drawDigit1 = [&](int x, int y, int val, uint16_t fg, uint16_t bg) {
+    char b[2] = { (char)('0' + val), '\0' };
+    tft.fillRect(x, y, digitW, charH, bg);
+    tft.setTextColor(fg, bg);
+    tft.setTextSize(2);
+    tft.drawString(b, x, y);
+  };
+
   for (int row = 0; row < 4; row++) {
     int idx = (worldBaseIndex + row) % TZ_COUNT, y2 = yTop + row * rowH;
     uint16_t bg = (row == 0) ? TFT_NAVY : TFT_BLACK;
@@ -604,34 +846,43 @@ void drawWorldRowsOnly() {
       tft.setTextColor(row == 0 ? TFT_WHITE : TFT_CYAN, bg);
       tft.drawString(kTimezones[idx].label, 14, y2 + 2);
       tft.setTextColor(row == 0 ? TFT_YELLOW : TFT_GREEN, bg);
-      tft.drawString(":", 173, y2 + 18);
-      tft.drawString(":", 209, y2 + 18);
+      tft.drawString(":", c1X, y2 + 18);
+      tft.drawString(":", c2X, y2 + 18);
       worldPrevIdx[row] = idx;
       worldPrevHour[row] = worldPrevMinute[row] = worldPrevSecond[row] = -1;
     }
     struct tm ti;
     uint16_t fg = (row == 0) ? TFT_YELLOW : TFT_GREEN;
     if (!getTimeInZone(idx, now, &ti)) {
-      tft.setTextColor(fg, bg);
-      tft.setTextSize(2);
-      tft.drawString("--", 149, y2 + 18);
-      tft.drawString("--", 185, y2 + 18);
-      tft.drawString("--", 221, y2 + 18);
+      if (worldPrevHour[row] != -2 || worldPrevMinute[row] != -2 || worldPrevSecond[row] != -2) {
+        tft.fillRect(hX, y2 + 18, digitW * 6 + colonW * 2, charH, bg);
+        tft.setTextColor(fg, bg);
+        tft.setTextSize(2);
+        tft.drawString("--", hX, y2 + 18);
+        tft.drawString("--", mX, y2 + 18);
+        tft.drawString("--", sX, y2 + 18);
+        worldPrevHour[row] = worldPrevMinute[row] = worldPrevSecond[row] = -2;
+      }
       continue;
     }
-    auto drawField = [&](int val, int& prev, int x2) {
-      if (val == prev) return;
-      char b[3];
-      snprintf(b, sizeof(b), "%02d", val);
-      tft.fillRect(x2, y2 + 18, 22, 18, bg);
-      tft.setTextColor(fg, bg);
-      tft.setTextSize(2);
-      tft.drawString(b, x2, y2 + 18);
-      prev = val;
-    };
-    drawField(ti.tm_hour, worldPrevHour[row], 149);
-    drawField(ti.tm_min, worldPrevMinute[row], 185);
-    drawField(ti.tm_sec, worldPrevSecond[row], 221);
+    if (worldPrevHour[row] < 0 || worldPrevHour[row] != ti.tm_hour) {
+      drawField2(hX, y2 + 18, ti.tm_hour, fg, bg);
+      worldPrevHour[row] = ti.tm_hour;
+    }
+    if (worldPrevMinute[row] < 0 || worldPrevMinute[row] != ti.tm_min) {
+      drawField2(mX, y2 + 18, ti.tm_min, fg, bg);
+      worldPrevMinute[row] = ti.tm_min;
+    }
+    if (worldPrevSecond[row] < 0 || worldPrevSecond[row] != ti.tm_sec) {
+      int prevSec = worldPrevSecond[row];
+      int newTens = ti.tm_sec / 10;
+      int prevTens = (prevSec >= 0) ? (prevSec / 10) : -1;
+      if (prevSec < 0 || newTens != prevTens) {
+        drawDigit1(sX, y2 + 18, newTens, fg, bg);
+      }
+      drawDigit1(sX + digitW, y2 + 18, ti.tm_sec % 10, fg, bg);
+      worldPrevSecond[row] = ti.tm_sec;
+    }
   }
   worldLayoutReady = true;
 }
@@ -647,17 +898,10 @@ void drawWorldView() {
 }
 
 // Wi-Fi page
-void drawWiFiInfoPage() {
-  tzListStaticDrawn = timeEditStaticDrawn = false;
-  drawHeader("Settings: Wi-Fi");
+void drawWiFiInfoDynamicOnly() {
+  tft.fillRect(10, 112, tft.width() - 20, 146, TFT_BLACK);
+  tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
   tft.setTextSize(1);
-  tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
-  tft.drawString("Connect a phone to the hotspot:", 10, 46);
-  tft.setTextColor(TFT_YELLOW, TFT_BLACK);
-  tft.drawString("  " AP_SSID, 10, 62);
-  tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
-  tft.drawString("Enter your home Wi-Fi and Pairing", 10, 80);
-  tft.drawString("Code. Repeat when changing network.", 10, 96);
   tft.drawString("Current Wi-Fi:", 10, 114);
   if (WiFi.status() == WL_CONNECTED) {
     tft.setTextColor(TFT_GREEN, TFT_BLACK);
@@ -671,6 +915,33 @@ void drawWiFiInfoPage() {
   int bw = tft.width() - 20;
   drawButton(10, 152, bw, 44, "Start to Connect", wifiMenuIndex == 0);
   drawButton(10, 208, bw, 44, "Back", wifiMenuIndex == 1);
+}
+
+void drawWiFiInfoButtonsOnly(int prevIndex = -1) {
+  int bw = tft.width() - 20;
+  if (prevIndex < 0) {
+    drawButton(10, 152, bw, 44, "Start to Connect", wifiMenuIndex == 0);
+    drawButton(10, 208, bw, 44, "Back", wifiMenuIndex == 1);
+    return;
+  }
+  if (prevIndex == 0) drawButton(10, 152, bw, 44, "Start to Connect", wifiMenuIndex == 0);
+  if (prevIndex == 1) drawButton(10, 208, bw, 44, "Back", wifiMenuIndex == 1);
+  if (wifiMenuIndex == 0) drawButton(10, 152, bw, 44, "Start to Connect", true);
+  if (wifiMenuIndex == 1) drawButton(10, 208, bw, 44, "Back", true);
+}
+
+void drawWiFiInfoPage() {
+  tzListStaticDrawn = timeEditStaticDrawn = false;
+  drawHeader("Settings: Wi-Fi");
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+  tft.drawString("Connect a phone to the hotspot:", 10, 46);
+  tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+  tft.drawString("  " AP_SSID, 10, 62);
+  tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+  tft.drawString("Enter your home Wi-Fi and Pairing", 10, 80);
+  tft.drawString("Code. Repeat when changing network.", 10, 96);
+  drawWiFiInfoDynamicOnly();
   tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
   tft.setTextSize(1);
   tft.drawString("Rotate: move   Press: confirm", 10, 264);

@@ -11,6 +11,7 @@
 #include "mqtt_manager.h"
 
 #include <Preferences.h>
+#include <HTTPClient.h>
 #include <math.h>
 #include <esp_log.h>
 #include <sys/time.h>
@@ -27,6 +28,7 @@ void drawTimezoneList();
 void drawTimezoneListRowsOnly();
 void drawTimeEditor();
 void drawTimeEditorFieldsOnly();
+void drawTimeEditorFieldOnly(int i);
 void drawMenu();
 void drawWorldView();
 void drawWorldRowsOnly();
@@ -37,7 +39,20 @@ void drawSelfEmoji();
 void drawWiFiInfoPage();
 void drawWiFiConnectingPage();
 void drawWiFiResultPage(bool success);
-void drawWiFiIndicator();
+void drawWiFiIndicator(bool force);
+void drawWelcomePage();
+void drawBootNetworkPage();
+void drawBootNetworkStatusOnly();
+void drawBootNetworkButtonsOnly();
+void drawDateTimeMenu();
+void drawDateTimeMenuDynamicOnly();
+void drawDateTimeMenuButtonsOnly(int prevIndex, bool forceFull);
+void drawMenuOptionsOnly();
+void drawMenuOptionOnly(int i);
+void drawWiFiInfoDynamicOnly();
+void drawWiFiInfoButtonsOnly(int prevIndex);
+void applyTimezoneByIndex(int idx);
+void saveTimezoneSetting();
 
 void IRAM_ATTR onEncChange() {
   static const int8_t trans[16] = {
@@ -56,6 +71,95 @@ void ensureWifiInit() {
   if (wifiInited) return;
   wifiInit();
   wifiInited = true;
+}
+
+void saveAutoTimeSetting() {
+  Preferences pref;
+  pref.begin(PREF_NS, false);
+  pref.putBool(KEY_AUTO_TIME, autoTimeEnabled);
+  pref.end();
+}
+
+void loadAutoTimeSetting() {
+  Preferences pref;
+  pref.begin(PREF_NS, true);
+  autoTimeEnabled = pref.getBool(KEY_AUTO_TIME, true);
+  pref.end();
+}
+
+int timezoneIndexFromOffsetSeconds(long offsetSec) {
+  float h = (float)offsetSec / 3600.0f;
+  int rounded = (h >= 0.0f) ? (int)floorf(h + 0.5f) : (int)ceilf(h - 0.5f);
+  if (rounded < -12) rounded = -12;
+  if (rounded > 14) rounded = 14;
+  return rounded + 12;
+}
+
+bool fetchUtcOffsetFromIP(long* outOffsetSec) {
+  HTTPClient http;
+  http.setTimeout(3000);
+  if (!http.begin("http://ip-api.com/json/?fields=status,offset")) return false;
+  int code = http.GET();
+  if (code != 200) {
+    http.end();
+    return false;
+  }
+  String body = http.getString();
+  http.end();
+  if (body.indexOf("\"status\":\"success\"") < 0) return false;
+  int p = body.indexOf("\"offset\":");
+  if (p < 0) return false;
+  p += 9;
+  while (p < body.length() && (body[p] == ' ' || body[p] == '\t')) p++;
+  int e = p;
+  while (e < body.length() && (body[e] == '-' || (body[e] >= '0' && body[e] <= '9'))) e++;
+  if (e <= p) return false;
+  *outOffsetSec = body.substring(p, e).toInt();
+  return true;
+}
+
+bool syncTimeFromNtpUtc() {
+  configTzTime("UTC0", "pool.ntp.org", "time.nist.gov", "time.google.com");
+  uint32_t start = millis();
+  while (millis() - start < 2500) {
+    time_t now = time(nullptr);
+    if (now > 100000) return true;
+    delay(200);
+  }
+  return false;
+}
+
+void maybeAutoSyncTimeAndTimezone(bool force = false) {
+  static bool lastWifiConnected = false;
+  bool wifiConnected = (WiFi.status() == WL_CONNECTED);
+  if (wifiConnected && !lastWifiConnected) force = true;
+  lastWifiConnected = wifiConnected;
+
+  if (!autoTimeEnabled) return;
+  if (!wifiConnected) return;
+
+  uint32_t nowMs = millis();
+  uint32_t interval = autoTimeSynced ? 3600000UL : 15000UL;  // success: hourly, else retry every 15s
+  if (!force && (nowMs - autoTimeLastAttemptMs < interval)) return;
+  autoTimeLastAttemptMs = nowMs;
+
+  long offsetSec = 0;
+  bool tzOk = fetchUtcOffsetFromIP(&offsetSec);
+  if (tzOk) {
+    int idx = timezoneIndexFromOffsetSeconds(offsetSec);
+    if (idx != tzIndex) {
+      applyTimezoneByIndex(idx);
+      saveTimezoneSetting();
+      partnerInfoDirty = true;
+    }
+  }
+
+  bool ntpOk = syncTimeFromNtpUtc();
+  if (ntpOk) autoTimeSynced = true;
+
+  if ((tzOk || ntpOk) && screenState == SCREEN_EMOJI_HOME) {
+    drawEmojiHome();
+  }
 }
 
 int consumeEncoderStep() {
@@ -245,6 +349,106 @@ void adjustEditField(int delta) {
 }
 
 // Screen handling
+void handleWelcome() {
+  consumeEncoderStep();
+  if (takeShortPressEvent()) {
+    clearButtonEvents();
+    screenState = SCREEN_BOOT_NETWORK;
+    bootMenuIndex = 0;
+    drawBootNetworkPage();
+  }
+}
+
+void handleBootNetwork() {
+  static uint32_t lastStatusMs = 0;
+  static int lastConn = -1;
+  static String lastSsid = "";
+  uint32_t nowMs = millis();
+  if (nowMs - lastStatusMs >= 600) {
+    lastStatusMs = nowMs;
+    int conn = (WiFi.status() == WL_CONNECTED) ? 1 : 0;
+    String ssid = conn ? WiFi.SSID() : "";
+    if (conn != lastConn || ssid != lastSsid) {
+      drawBootNetworkStatusOnly();
+      lastConn = conn;
+      lastSsid = ssid;
+    }
+    drawWiFiIndicator();
+  }
+
+  int d = consumeEncoderStep();
+  if (d != 0) {
+    bootMenuIndex += d;
+    if (bootMenuIndex < 0) bootMenuIndex = 1;
+    if (bootMenuIndex > 1) bootMenuIndex = 0;
+    drawBootNetworkButtonsOnly();
+  }
+  if (takeShortPressEvent()) {
+    clearButtonEvents();
+    if (bootMenuIndex == 0) {
+      wifiFromBootFlow = true;
+      screenState = SCREEN_WIFI_INFO;
+      wifiMenuIndex = 0;
+      drawWiFiInfoPage();
+    } else {
+      wifiFromBootFlow = false;
+      screenState = SCREEN_EMOJI_HOME;
+      drawEmojiHome();
+    }
+  }
+}
+
+void handleDateTimeMenu() {
+  int optionCount = autoTimeEnabled ? 2 : 4;
+  int d = consumeEncoderStep();
+  if (d != 0) {
+    int prev = dateTimeMenuIndex;
+    dateTimeMenuIndex += d;
+    if (dateTimeMenuIndex < 0) dateTimeMenuIndex = optionCount - 1;
+    if (dateTimeMenuIndex >= optionCount) dateTimeMenuIndex = 0;
+    drawDateTimeMenuButtonsOnly(prev, false);
+  }
+  if (takeShortPressEvent()) {
+    clearButtonEvents();
+    if (dateTimeMenuIndex == 0) {
+      autoTimeEnabled = !autoTimeEnabled;
+      autoTimeSynced = false;
+      saveAutoTimeSetting();
+      if (autoTimeEnabled) maybeAutoSyncTimeAndTimezone(true);
+      dateTimeMenuIndex = 0;
+      drawDateTimeMenu();
+      return;
+    }
+
+    if (autoTimeEnabled) {
+      screenState = SCREEN_MENU;
+      drawMenu();
+      return;
+    }
+
+    switch (dateTimeMenuIndex) {
+      case 1:
+        fromDateTimeMenu = true;
+        screenState = SCREEN_TZ_LIST;
+        tzListIndex = tzIndex;
+        drawTimezoneList();
+        drawTimezoneListRowsOnly();
+        break;
+      case 2:
+        fromDateTimeMenu = true;
+        screenState = SCREEN_TIME_EDIT;
+        loadEditorFromCurrentOrDefault();
+        drawTimeEditor();
+        drawTimeEditorFieldsOnly();
+        break;
+      default:
+        screenState = SCREEN_MENU;
+        drawMenu();
+        break;
+    }
+  }
+}
+
 void handleTimezoneList() {
   static uint32_t lastWifiIconMs = 0;
   uint32_t nowMs = millis();
@@ -265,11 +469,11 @@ void handleTimezoneList() {
     applyTimezoneByIndex(tzListIndex);
     saveTimezoneSetting();
     clearButtonEvents();
-    if (startupFlow) {
-      screenState = SCREEN_TIME_EDIT;
-      loadEditorFromCurrentOrDefault();
-      drawTimeEditor();
-      drawTimeEditorFieldsOnly();
+    if (fromDateTimeMenu) {
+      fromDateTimeMenu = false;
+      screenState = SCREEN_DATE_TIME_MENU;
+      dateTimeMenuIndex = 0;
+      drawDateTimeMenu();
     } else {
       screenState = SCREEN_EMOJI_HOME;
       drawEmojiHome();
@@ -287,22 +491,31 @@ void handleTimeEdit() {
 
   int d = consumeEncoderStep();
   if (d != 0) {
+    int prevField = editField;
     adjustEditField(d);
     if (!timeEditStaticDrawn) drawTimeEditor();
-    drawTimeEditorFieldsOnly();
+    drawTimeEditorFieldOnly(prevField);
   }
   if (takeShortPressEvent()) {
+    int prevField = editField;
     editField++;
     if (editField > 4) {
       applyManualDateTime();
       clearButtonEvents();
-      startupFlow = false;
-      screenState = SCREEN_EMOJI_HOME;
-      drawEmojiHome();
+      if (fromDateTimeMenu) {
+        fromDateTimeMenu = false;
+        screenState = SCREEN_DATE_TIME_MENU;
+        dateTimeMenuIndex = 0;
+        drawDateTimeMenu();
+      } else {
+        screenState = SCREEN_EMOJI_HOME;
+        drawEmojiHome();
+      }
       return;
     }
     if (!timeEditStaticDrawn) drawTimeEditor();
-    drawTimeEditorFieldsOnly();
+    drawTimeEditorFieldOnly(prevField);
+    drawTimeEditorFieldOnly(editField);
   }
 }
 
@@ -331,37 +544,33 @@ void handleEmojiHome() {
 void handleMenu() {
   int d = consumeEncoderStep();
   if (d != 0) {
+    int prev = menuIndex;
     menuIndex += d;
-    if (menuIndex < 0) menuIndex = 4;
-    if (menuIndex > 4) menuIndex = 0;
-    drawMenu();
+    if (menuIndex < 0) menuIndex = 3;
+    if (menuIndex > 3) menuIndex = 0;
+    drawMenuOptionOnly(prev);
+    drawMenuOptionOnly(menuIndex);
   }
   if (takeShortPressEvent()) {
     clearButtonEvents();
     switch (menuIndex) {
       case 0:
-        screenState = SCREEN_TZ_LIST;
-        tzListIndex = tzIndex;
-        drawTimezoneList();
-        drawTimezoneListRowsOnly();
+        screenState = SCREEN_DATE_TIME_MENU;
+        dateTimeMenuIndex = 0;
+        drawDateTimeMenu();
         break;
       case 1:
-        screenState = SCREEN_TIME_EDIT;
-        loadEditorFromCurrentOrDefault();
-        drawTimeEditor();
-        drawTimeEditorFieldsOnly();
-        break;
-      case 2:
         screenState = SCREEN_WORLD_VIEW;
         worldBaseIndex = tzIndex;
         drawWorldView();
         break;
-      case 3:
+      case 2:
         screenState = SCREEN_WIFI_INFO;
+        wifiFromBootFlow = false;
         wifiMenuIndex = 0;
         drawWiFiInfoPage();
         break;
-      case 4:
+      case 3:
         screenState = SCREEN_EMOJI_HOME;
         drawEmojiHome();
         break;
@@ -392,12 +601,28 @@ void handleWorldView() {
 
 void handleWiFiInfo() {
   ensureWifiInit();
+  static uint32_t lastWifiInfoMs = 0;
+  static int lastConn = -1;
+  static String lastSsid = "";
+  uint32_t nowMs = millis();
+  if (nowMs - lastWifiInfoMs >= 700) {
+    lastWifiInfoMs = nowMs;
+    int conn = (WiFi.status() == WL_CONNECTED) ? 1 : 0;
+    String ssid = conn ? WiFi.SSID() : "";
+    if (conn != lastConn || ssid != lastSsid) {
+      drawWiFiInfoDynamicOnly();
+      lastConn = conn;
+      lastSsid = ssid;
+    }
+    drawWiFiIndicator();
+  }
   int d = consumeEncoderStep();
   if (d != 0) {
+    int prev = wifiMenuIndex;
     wifiMenuIndex += d;
     if (wifiMenuIndex < 0) wifiMenuIndex = 1;
     if (wifiMenuIndex > 1) wifiMenuIndex = 0;
-    drawWiFiInfoPage();
+    drawWiFiInfoButtonsOnly(prev);
   }
   if (takeShortPressEvent()) {
     clearButtonEvents();
@@ -406,8 +631,14 @@ void handleWiFiInfo() {
       drawWiFiConnectingPage();
       wifiStartHotspot();
     } else {
-      screenState = SCREEN_MENU;
-      drawMenu();
+      if (wifiFromBootFlow) {
+        wifiFromBootFlow = false;
+        screenState = SCREEN_EMOJI_HOME;
+        drawEmojiHome();
+      } else {
+        screenState = SCREEN_MENU;
+        drawMenu();
+      }
     }
   }
 }
@@ -455,14 +686,14 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(ENC_DT), onEncChange, CHANGE);
 
   loadTimezoneSetting();
+  loadAutoTimeSetting();
   wifiInit();
   wifiInited = true;
+  maybeAutoSyncTimeAndTimezone(true);
 
-  startupFlow = true;
-  screenState = SCREEN_TZ_LIST;
-  tzListIndex = tzIndex;
-  drawTimezoneList();
-  drawTimezoneListRowsOnly();
+  startupFlow = false;
+  screenState = SCREEN_WELCOME;
+  drawWelcomePage();
   mqttInit();
 }
 
@@ -470,8 +701,11 @@ void loop() {
   updateButtonEvents();
 
   switch (screenState) {
+    case SCREEN_WELCOME: handleWelcome(); break;
+    case SCREEN_BOOT_NETWORK: handleBootNetwork(); break;
     case SCREEN_TZ_LIST: handleTimezoneList(); break;
     case SCREEN_TIME_EDIT: handleTimeEdit(); break;
+    case SCREEN_DATE_TIME_MENU: handleDateTimeMenu(); break;
     case SCREEN_EMOJI_HOME: handleEmojiHome(); break;
     case SCREEN_MENU: handleMenu(); break;
     case SCREEN_WORLD_VIEW: handleWorldView(); break;
@@ -482,6 +716,7 @@ void loop() {
   }
 
   wifiMaintainConnection();
+  maybeAutoSyncTimeAndTimezone();
   delay(8);
   mqttLoop();
 }
