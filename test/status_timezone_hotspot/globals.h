@@ -41,7 +41,7 @@ public:
     {
       auto cfg = _bus.config();
       cfg.port       = 0;
-      cfg.freq_write = 8000000;  // ← slowed down from 2000000 to reduce pixel corruption
+      cfg.freq_write = 8000000;  //   to reduce pixel corruption
       cfg.freq_read  = 4000000;  // ← added explicit read frequency
       cfg.pin_wr     = TFT_WR;
       cfg.pin_rd     = -1;
