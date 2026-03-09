@@ -16,6 +16,11 @@ bool getTimeInZone(int idx, time_t baseNow, struct tm* out);
 void resetWorldClockCache();
 void drawPartnerTimeOnly();
 void drawSelfPanelTimeOnly();
+int getUsedScheduleCount();
+int getUsedScheduleSlotByRow(int row);
+void formatScheduleSummary(int slot, char* line1, size_t n1, char* line2, size_t n2);
+void formatRepeatLabelFromDate(uint8_t repeat, int year, int month, int day, char* out, size_t n);
+void formatScheduleItemSummary(const ScheduleItem& s, char* line1, size_t n1, char* line2, size_t n2);
 
 uint16_t rgb565(uint8_t r, uint8_t g, uint8_t b) {
   return tft.color565(r, g, b);
@@ -765,29 +770,29 @@ void drawDateTimeMenu() {
 }
 
 void drawMenuOptionsOnly() {
-  tft.fillRect(10, 44, tft.width() - 20, 176, TFT_BLACK);
-  const char* options[4] = { "Date & Time", "World clocks", "Wi-Fi connection", "Back to Home" };
-  for (int i = 0; i < 4; i++) {
-    int y2 = 48 + i * 42;
+  tft.fillRect(10, 44, tft.width() - 20, 220, TFT_BLACK);
+  const char* options[5] = { "Date & Time", "World clocks", "Wi-Fi connection", "Schedules", "Back to Home" };
+  for (int i = 0; i < 5; i++) {
+    int y2 = 48 + i * 40;
     bool sel = (i == menuIndex);
-    uint16_t bg = sel ? ((i == 3) ? TFT_DARKGREEN : TFT_DARKCYAN) : TFT_BLACK;
-    tft.fillRoundRect(10, y2 - 4, tft.width() - 20, 34, 6, bg);
+    uint16_t bg = sel ? ((i == 4) ? TFT_DARKGREEN : TFT_DARKCYAN) : TFT_BLACK;
+    tft.fillRoundRect(10, y2 - 4, tft.width() - 20, 32, 6, bg);
     tft.setTextColor(sel ? TFT_WHITE : TFT_LIGHTGREY, bg);
     tft.setTextSize(2);
-    tft.drawString(options[i], 18, y2);
+    tft.drawString(options[i], 18, y2 - 1);
   }
 }
 
 void drawMenuOptionOnly(int i) {
-  if (i < 0 || i > 3) return;
-  const char* options[4] = { "Date & Time", "World clocks", "Wi-Fi connection", "Back to Home" };
-  int y2 = 48 + i * 42;
+  if (i < 0 || i > 4) return;
+  const char* options[5] = { "Date & Time", "World clocks", "Wi-Fi connection", "Schedules", "Back to Home" };
+  int y2 = 48 + i * 40;
   bool sel = (i == menuIndex);
-  uint16_t bg = sel ? ((i == 3) ? TFT_DARKGREEN : TFT_DARKCYAN) : TFT_BLACK;
-  tft.fillRoundRect(10, y2 - 4, tft.width() - 20, 34, 6, bg);
+  uint16_t bg = sel ? ((i == 4) ? TFT_DARKGREEN : TFT_DARKCYAN) : TFT_BLACK;
+  tft.fillRoundRect(10, y2 - 4, tft.width() - 20, 32, 6, bg);
   tft.setTextColor(sel ? TFT_WHITE : TFT_LIGHTGREY, bg);
   tft.setTextSize(2);
-  tft.drawString(options[i], 18, y2);
+  tft.drawString(options[i], 18, y2 - 1);
 }
 
 // Setting Menu
@@ -797,7 +802,212 @@ void drawMenu() {
   drawMenuOptionsOnly();
   tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
   tft.setTextSize(1);
-  tft.drawString("Rotate: move   Press: confirm", 10, 258);
+  tft.drawString("Rotate: move   Press: confirm", 10, 276);
+}
+
+// Schedule page
+void drawScheduleButtonsOnly(int prevIndex = -1) {
+  auto drawOne = [&](int idx) {
+    if (idx == 0) drawButton(10, 48, 150, 36, "Add", scheduleMenuIndex == 0);
+    else if (idx == 1) drawButton(170, 48, 150, 36, "Delete", scheduleMenuIndex == 1);
+    else if (idx == 2) drawButton(330, 48, 140, 36, "Back", scheduleMenuIndex == 2, TFT_DARKGREEN);
+  };
+  if (prevIndex < 0) {
+    drawOne(0);
+    drawOne(1);
+    drawOne(2);
+    return;
+  }
+  drawOne(prevIndex);
+  if (prevIndex != scheduleMenuIndex) drawOne(scheduleMenuIndex);
+}
+
+void drawScheduleListOnly() {
+  tft.fillRect(10, 96, tft.width() - 20, 214, TFT_BLACK);
+  int used = getUsedScheduleCount();
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+  tft.drawString(String("Configured schedules: ") + used, 10, 98);
+
+  if (used == 0) {
+    tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    tft.drawString("No schedules yet. Choose Add.", 10, 118);
+    return;
+  }
+
+  int y = 118;
+  int shown = 0;
+  for (int r = 0; r < used && shown < 4; r++, shown++) {
+    int slot = getUsedScheduleSlotByRow(r);
+    if (slot < 0) continue;
+    char l1[64], l2[64];
+    formatScheduleSummary(slot, l1, sizeof(l1), l2, sizeof(l2));
+    tft.fillRoundRect(10, y - 2, tft.width() - 20, 44, 4, TFT_BLACK);
+    tft.drawRoundRect(10, y - 2, tft.width() - 20, 44, 4, TFT_DARKGREY);
+    tft.setTextColor(TFT_CYAN, TFT_BLACK);
+    tft.setTextSize(1);
+    tft.drawString(String("#") + String(r + 1) + " " + l1, 14, y + 2);
+    tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+    tft.drawString(l2, 14, y + 20);
+    y += 48;
+  }
+}
+
+void drawScheduleListPage() {
+  tzListStaticDrawn = timeEditStaticDrawn = false;
+  drawHeader("Settings: Schedules");
+  drawScheduleButtonsOnly(-1);
+  tft.drawFastHLine(10, 90, tft.width() - 20, TFT_DARKGREY);
+  drawScheduleListOnly();
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+  tft.drawString("Rotate: move   Press: confirm", 10, 300);
+}
+
+void drawScheduleAddDateFields(const ScheduleItem& d, bool isStart, int activeField) {
+  const int x = 16, y = 124, w = 52, h = 40, gap = 8;
+  int values[5] = { isStart ? d.sy : d.ey, isStart ? d.sm : d.em, isStart ? d.sd : d.ed, isStart ? d.sh : d.eh, isStart ? d.smin : d.emin };
+  const char* labels[5] = { "YEAR", "MON", "DAY", "HOUR", "MIN" };
+  tft.fillRect(10, 118, tft.width() - 20, 60, TFT_BLACK);
+  for (int i = 0; i < 5; i++) {
+    int bx = x + i * (w + gap);
+    bool sel = (i == activeField);
+    uint16_t bg = sel ? TFT_DARKCYAN : TFT_BLACK;
+    tft.fillRoundRect(bx, y, w, h, 5, bg);
+    tft.drawRoundRect(bx, y, w, h, 5, TFT_DARKGREY);
+    tft.setTextColor(sel ? TFT_WHITE : TFT_LIGHTGREY, bg);
+    tft.setTextDatum(lgfx::top_center);
+    tft.setTextSize(1);
+    tft.drawString(labels[i], bx + w / 2, y + 3);
+    char buf[8];
+    if (i == 0) snprintf(buf, sizeof(buf), "%04d", values[i]);
+    else snprintf(buf, sizeof(buf), "%02d", values[i]);
+    tft.setTextSize(2);
+    tft.drawString(buf, bx + w / 2, y + 16);
+  }
+  tft.setTextDatum(lgfx::top_left);
+}
+
+void drawScheduleAddDynamicOnly() {
+  tft.fillRect(10, 44, tft.width() - 20, 266, TFT_BLACK);
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+  tft.drawString("Step " + String(scheduleAddStep + 1) + "/5", 10, 46);
+
+  if (scheduleAddStep == 0) {
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_CYAN, TFT_BLACK);
+    tft.drawString("Select status", 10, 64);
+    tft.setTextSize(1);
+    tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+    tft.drawString("Rotate to choose emoji", 10, 88);
+    tft.fillRoundRect(70, 104, tft.width() - 140, 124, 10, TFT_BLACK);
+    tft.drawRoundRect(70, 104, tft.width() - 140, 124, 10, TFT_DARKCYAN);
+    float saved = SCALE;
+    SCALE = 0.8f;
+    int cx = tft.width() / 2;
+    int cy = 166;
+    switch ((MyStatus)scheduleDraft.status) {
+      case ST_FREE: drawHappyFace(cx, cy); break;
+      case ST_BUSY: drawBusyIcon(cx, cy); break;
+      case ST_SLEEPING: drawSleepingZs(cx, cy, TFT_BLACK); break;
+      case ST_MISS_YOU: drawHeart(cx, cy); break;
+      case ST_BAD_DAY: drawSadFace(cx, cy); break;
+      default: break;
+    }
+    SCALE = saved;
+    tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    tft.setTextSize(1);
+    tft.drawString("Press to edit start date/time", 10, 236);
+  } else if (scheduleAddStep == 1 || scheduleAddStep == 2) {
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_CYAN, TFT_BLACK);
+    tft.drawString(scheduleAddStep == 1 ? "Start date/time" : "End date/time", 10, 64);
+    tft.setTextSize(1);
+    tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+    tft.drawString("Rotate: change   Press: next field", 10, 90);
+    drawScheduleAddDateFields(scheduleDraft, scheduleAddStep == 1, scheduleAddField);
+  } else if (scheduleAddStep == 3) {
+    char wbuf[24], mbuf[24];
+    formatRepeatLabelFromDate(SCH_WEEKLY, scheduleDraft.sy, scheduleDraft.sm, scheduleDraft.sd, wbuf, sizeof(wbuf));
+    formatRepeatLabelFromDate(SCH_MONTHLY, scheduleDraft.sy, scheduleDraft.sm, scheduleDraft.sd, mbuf, sizeof(mbuf));
+    const char* opts[4] = { "Once", "Daily", wbuf, mbuf };
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_CYAN, TFT_BLACK);
+    tft.drawString("Repeat mode", 10, 64);
+    for (int i = 0; i < 4; i++) {
+      drawButton(10, 102 + i * 40, tft.width() - 20, 32, opts[i], scheduleDraft.repeat == i);
+    }
+  } else {
+    char l1[64], l2[64];
+    formatScheduleItemSummary(scheduleDraft, l1, sizeof(l1), l2, sizeof(l2));
+
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_CYAN, TFT_BLACK);
+    tft.drawString("Save schedule?", 10, 64);
+    tft.setTextSize(1);
+    tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+    tft.drawString(l1, 10, 92);
+    tft.drawString(l2, 10, 108);
+    if (scheduleAddInvalidRange) {
+      tft.setTextColor(TFT_RED, TFT_BLACK);
+      tft.drawString("End must be later than start.", 10, 126);
+    }
+    if (scheduleAddFull) {
+      tft.setTextColor(TFT_ORANGE, TFT_BLACK);
+      tft.drawString("Schedule list is full. Delete one first.", 10, 142);
+    }
+    drawButton(10, 156, tft.width() - 20, 40, "Save", scheduleAddAction == 0, TFT_DARKGREEN);
+    drawButton(10, 204, tft.width() - 20, 40, "Cancel", scheduleAddAction == 1);
+  }
+}
+
+void drawScheduleAddPage() {
+  tzListStaticDrawn = timeEditStaticDrawn = false;
+  drawHeader("Schedule: Add");
+  drawScheduleAddDynamicOnly();
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+  tft.drawString("Rotate: change   Press: next/confirm", 10, 300);
+}
+
+void drawScheduleDeleteRowsOnly() {
+  tft.fillRect(10, 48, tft.width() - 20, 252, TFT_BLACK);
+  int used = getUsedScheduleCount();
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+  tft.drawString("Select schedule to delete", 10, 50);
+
+  if (used == 0) {
+    tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    tft.drawString("No schedules. Choose Back.", 10, 74);
+  }
+
+  int y = 78;
+  for (int r = 0; r < used; r++) {
+    int slot = getUsedScheduleSlotByRow(r);
+    if (slot < 0) continue;
+    bool sel = (scheduleDeleteIndex == r);
+    uint16_t bg = sel ? tft.color565(96, 16, 16) : TFT_BLACK;
+    char l1[64], l2[64];
+    formatScheduleSummary(slot, l1, sizeof(l1), l2, sizeof(l2));
+    tft.fillRoundRect(10, y - 2, tft.width() - 20, 44, 4, bg);
+    tft.drawRoundRect(10, y - 2, tft.width() - 20, 44, 4, sel ? TFT_WHITE : TFT_DARKGREY);
+    tft.setTextColor(sel ? TFT_WHITE : TFT_CYAN, bg);
+    tft.drawString(String("#") + String(r + 1) + " " + l1, 14, y + 2);
+    tft.setTextColor(sel ? TFT_WHITE : TFT_LIGHTGREY, bg);
+    tft.drawString(l2, 14, y + 20);
+    y += 48;
+  }
+
+  bool selBack = (scheduleDeleteIndex == used);
+  drawButton(10, 268, tft.width() - 20, 34, "Back", selBack, TFT_DARKGREEN);
+}
+
+void drawScheduleDeletePage() {
+  tzListStaticDrawn = timeEditStaticDrawn = false;
+  drawHeader("Schedule: Delete");
+  drawScheduleDeleteRowsOnly();
 }
 
 

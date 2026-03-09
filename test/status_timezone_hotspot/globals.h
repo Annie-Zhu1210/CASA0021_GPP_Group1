@@ -86,6 +86,9 @@ enum ScreenState {
   SCREEN_TZ_LIST,
   SCREEN_TIME_EDIT,
   SCREEN_DATE_TIME_MENU,
+  SCREEN_SCHEDULE_LIST,
+  SCREEN_SCHEDULE_ADD,
+  SCREEN_SCHEDULE_DELETE,
   SCREEN_EMOJI_HOME,
   SCREEN_MENU,
   SCREEN_WORLD_VIEW,
@@ -109,6 +112,7 @@ const char* const KEY_AUTO_TIME = "auto_time";
 const char* const KEY_SSID     = "ssid";
 const char* const KEY_PASSWORD = "password";
 const char* const KEY_PAIRING  = "pairing";
+const char* const KEY_SCHEDULES = "scheds";
 
 TimezoneOption kTimezones[] = {
   {"UTC-12","UTC+12","USA (Baker Is.)"},
@@ -161,6 +165,33 @@ const char* statusText[ST_COUNT] = {
   "FREE", "BUSY", "SLEEPING", "MISS YOU", "BAD DAY"
 };
 
+enum ScheduleRepeat {
+  SCH_ONCE = 0,
+  SCH_DAILY,
+  SCH_WEEKLY,
+  SCH_MONTHLY,
+  SCH_REPEAT_COUNT
+};
+
+struct ScheduleItem {
+  uint8_t used;
+  uint8_t status;
+  uint8_t repeat;
+  uint16_t sy;
+  uint8_t sm;
+  uint8_t sd;
+  uint8_t sh;
+  uint8_t smin;
+  uint16_t ey;
+  uint8_t em;
+  uint8_t ed;
+  uint8_t eh;
+  uint8_t emin;
+};
+
+static constexpr int MAX_SCHEDULES = 4;
+ScheduleItem schedules[MAX_SCHEDULES] = {};
+
 // Timezone and menu navigation
 int  tzIndex        = 0;
 int  tzListIndex    = 0;
@@ -171,6 +202,8 @@ int  worldBaseIndex = 0;
 bool startupFlow    = false;
 bool wifiFromBootFlow = false;
 bool fromDateTimeMenu = false;
+int  scheduleMenuIndex = 0;
+int  scheduleDeleteIndex = 0;
 
 // Date/time auto mode
 bool autoTimeEnabled = true;
@@ -180,6 +213,20 @@ uint32_t autoTimeLastAttemptMs = 0;
 // Time editor fields
 int editYear   = 2026, editMonth  = 1, editDay    = 1;
 int editHour   = 12,   editMinute = 0, editField  = 0;
+
+// Schedule add editor
+ScheduleItem scheduleDraft = {};
+int scheduleAddStep = 0;     // 0=status 1=start 2=end 3=repeat 4=save/cancel
+int scheduleAddField = 0;    // Y/M/D/H/M for start/end steps
+int scheduleAddAction = 0;   // 0=save 1=cancel
+bool scheduleAddFull = false;
+bool scheduleAddInvalidRange = false;
+
+// Runtime schedule override
+bool scheduleOverrideActive = false;
+int  scheduleActiveSlot = -1;
+MyStatus scheduleRestoreStatus = ST_FREE;
+uint32_t scheduleLastCheckMs = 0;
 
 // Emoji home screen
 float  SCALE           = 1.2f;
