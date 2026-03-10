@@ -208,6 +208,46 @@ void drawHeart(int x, int y) {
   tft.fillCircle(x - (int)(2 * s), y - (int)(14 * s), (int)(2 * s), tft.color565(255, 230, 235));
 }
 
+void drawOfflineFace(int x, int y) {
+  int r = (int)(45 * SCALE);
+  uint16_t face = tft.color565(125, 130, 140);
+  uint16_t edge = tft.color565(70, 74, 82);
+  uint16_t dark = tft.color565(35, 38, 44);
+  uint16_t accent = tft.color565(220, 90, 90);
+  tft.fillCircle(x, y, r, face);
+  drawThickCircle(x, y, r, 2, edge);
+
+  int ex = (int)(16 * SCALE), ey = (int)(10 * SCALE), d = (int)(5 * SCALE);
+  drawThickLine(x - ex - d, y - ey - d, x - ex + d, y - ey + d, 2, dark);
+  drawThickLine(x - ex - d, y - ey + d, x - ex + d, y - ey - d, 2, dark);
+  drawThickLine(x + ex - d, y - ey - d, x + ex + d, y - ey + d, 2, dark);
+  drawThickLine(x + ex - d, y - ey + d, x + ex + d, y - ey - d, 2, dark);
+  drawThickLine(x - (int)(16 * SCALE), y + (int)(18 * SCALE),
+                x + (int)(16 * SCALE), y + (int)(18 * SCALE), 2, dark);
+
+  int px = x + (int)(24 * SCALE), py = y + (int)(18 * SCALE);
+  tft.fillRoundRect(px - (int)(10 * SCALE), py - (int)(8 * SCALE), (int)(20 * SCALE), (int)(16 * SCALE), 3, edge);
+  tft.fillRect(px + (int)(10 * SCALE), py - (int)(5 * SCALE), (int)(4 * SCALE), (int)(3 * SCALE), edge);
+  tft.fillRect(px + (int)(10 * SCALE), py + (int)(2 * SCALE), (int)(4 * SCALE), (int)(3 * SCALE), edge);
+  drawThickLine(px - (int)(13 * SCALE), py + (int)(10 * SCALE),
+                px + (int)(17 * SCALE), py - (int)(10 * SCALE), 2, accent);
+}
+
+void drawCheckingFace(int x, int y) {
+  int r = (int)(45 * SCALE);
+  uint16_t face = tft.color565(95, 105, 130);
+  uint16_t edge = tft.color565(60, 75, 105);
+  uint16_t dark = tft.color565(20, 25, 35);
+  uint16_t accent = tft.color565(120, 180, 255);
+  tft.fillCircle(x, y, r, face);
+  drawThickCircle(x, y, r, 2, edge);
+  tft.fillCircle(x - (int)(14 * SCALE), y - (int)(8 * SCALE), (int)(4 * SCALE), dark);
+  tft.fillCircle(x + (int)(14 * SCALE), y - (int)(8 * SCALE), (int)(4 * SCALE), dark);
+  tft.fillCircle(x - (int)(8 * SCALE), y + (int)(16 * SCALE), (int)(2 * SCALE), accent);
+  tft.fillCircle(x, y + (int)(16 * SCALE), (int)(2 * SCALE), accent);
+  tft.fillCircle(x + (int)(8 * SCALE), y + (int)(16 * SCALE), (int)(2 * SCALE), accent);
+}
+
 // Updated simpler sleeping emoji (sleep bear icon was too big to fit in the right panel)
 void drawSleepingZs(int cx, int cy, uint16_t bgCol) {
   int clearR = (int)(50 * SCALE);
@@ -392,11 +432,15 @@ void drawClockHmsIncremental(int x, int y, int textSize, uint16_t fg, uint16_t b
 
 void drawPartnerInfoStrip() {
   tft.fillRect(PINFO_X, 0, PINFO_W, TOP_STRIP_H, TFT_BLACK);
-  char label[16];
-  snprintf(label, sizeof(label), "P: %s", kTimezones[partnerTzIndex].label);
+  char label[24];
+  if (!partnerPresenceKnown) snprintf(label, sizeof(label), "P: CHECKING");
+  else if (partnerOnline) snprintf(label, sizeof(label), "P: %s", kTimezones[partnerTzIndex].label);
+  else snprintf(label, sizeof(label), "P: OFFLINE");
   tft.setTextDatum(lgfx::top_left);
   tft.setTextSize(1);
-  tft.setTextColor(TFT_CYAN, TFT_BLACK);
+  uint16_t col = !partnerPresenceKnown ? tft.color565(120, 180, 255)
+                                       : (partnerOnline ? TFT_CYAN : TFT_ORANGE);
+  tft.setTextColor(col, TFT_BLACK);
   tft.drawString(label, PINFO_X, PINFO_UTC_Y);
   prevPartnerHour = prevPartnerMinute = prevPartnerSecond = -1;
   prevPartnerTimeValid = false;
@@ -404,6 +448,41 @@ void drawPartnerInfoStrip() {
 }
 
 void drawPartnerTimeOnly() {
+  if (!partnerPresenceKnown) {
+    tft.setTextDatum(lgfx::top_left);
+    tft.setTextSize(1);
+    int h = tft.fontHeight();
+    tft.fillRect(PINFO_X, PINFO_TIME_Y, PINFO_W, h * 2 + 2, TFT_BLACK);
+    tft.setTextColor(tft.color565(120, 180, 255), TFT_BLACK);
+    tft.drawString("Checking partner...", PINFO_X, PINFO_TIME_Y);
+    tft.drawString("Waiting for heartbeat", PINFO_X, PINFO_TIME_Y + h + 1);
+    prevPartnerTimeValid = false;
+    prevPartnerHour = prevPartnerMinute = prevPartnerSecond = -2;
+    return;
+  }
+
+  if (!partnerOnline) {
+    tft.setTextDatum(lgfx::top_left);
+    tft.setTextSize(1);
+    int h = tft.fontHeight();
+    tft.fillRect(PINFO_X, PINFO_TIME_Y, PINFO_W, h * 2 + 2, TFT_BLACK);
+    tft.setTextColor(TFT_ORANGE, TFT_BLACK);
+    tft.drawString("Offline since:", PINFO_X, PINFO_TIME_Y);
+    char buf[24];
+    time_t stamp = (partnerOfflineSinceEpoch > 100000) ? partnerOfflineSinceEpoch : partnerLastSeenEpoch;
+    if (stamp > 100000) {
+      struct tm ti;
+      localtime_r(&stamp, &ti);
+      strftime(buf, sizeof(buf), "%m/%d %H:%M", &ti);
+      tft.drawString(buf, PINFO_X, PINFO_TIME_Y + h + 1);
+    } else {
+      tft.drawString("--/-- --:--", PINFO_X, PINFO_TIME_Y + h + 1);
+    }
+    prevPartnerTimeValid = false;
+    prevPartnerHour = prevPartnerMinute = prevPartnerSecond = -2;
+    return;
+  }
+
   bool valid = false;
   int h = 0, m = 0, s = 0;
   if (partnerTimeValid && partnerEpoch > 100000) {
@@ -483,13 +562,19 @@ void drawPartnerEmoji() {
   sleepSceneDrawn = false;
   float saved = SCALE;
   SCALE = 1.2f;
-  switch (partnerStatus) {
-    case ST_FREE: drawHappyFace(PARTNER_CX, PARTNER_CY); break;
-    case ST_BUSY: drawBusyIcon(PARTNER_CX, PARTNER_CY); break;
-    case ST_SLEEPING: startSleepScene(PARTNER_CX, PARTNER_CY); break;
-    case ST_MISS_YOU: drawHeart(PARTNER_CX, PARTNER_CY); break;
-    case ST_BAD_DAY: drawSadFace(PARTNER_CX, PARTNER_CY); break;
-    default: break;
+  if (!partnerPresenceKnown) {
+    drawCheckingFace(PARTNER_CX, PARTNER_CY);
+  } else if (!partnerOnline) {
+    drawOfflineFace(PARTNER_CX, PARTNER_CY);
+  } else {
+    switch (partnerStatus) {
+      case ST_FREE: drawHappyFace(PARTNER_CX, PARTNER_CY); break;
+      case ST_BUSY: drawBusyIcon(PARTNER_CX, PARTNER_CY); break;
+      case ST_SLEEPING: startSleepScene(PARTNER_CX, PARTNER_CY); break;
+      case ST_MISS_YOU: drawHeart(PARTNER_CX, PARTNER_CY); break;
+      case ST_BAD_DAY: drawSadFace(PARTNER_CX, PARTNER_CY); break;
+      default: break;
+    }
   }
   SCALE = saved;
 }
@@ -497,9 +582,13 @@ void drawPartnerEmoji() {
 void drawPartnerLabel() {
   tft.fillRect(0, PARTNER_LABEL_Y - 2, DIVIDER_X, 36, TFT_BLACK);
   tft.setTextSize(3);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  uint16_t col = !partnerPresenceKnown ? tft.color565(120, 180, 255)
+                                       : (partnerOnline ? TFT_WHITE : TFT_ORANGE);
+  tft.setTextColor(col, TFT_BLACK);
   tft.setTextDatum(lgfx::middle_center);
-  tft.drawString(statusText[(int)partnerStatus], PARTNER_CX, PARTNER_LABEL_Y + 10);
+  const char* text = !partnerPresenceKnown ? "CHECKING"
+                                           : (partnerOnline ? statusText[(int)partnerStatus] : "OFFLINE");
+  tft.drawString(text, PARTNER_CX, PARTNER_LABEL_Y + 10);
   tft.setTextDatum(lgfx::top_left);
 }
 
@@ -548,7 +637,7 @@ void tickEmojiHome() {
     drawPartnerTimeOnly();
     drawHomeWiFiIndicator();
   }
-  if (partnerStatus == ST_SLEEPING && sleepSceneDrawn) {
+  if (partnerOnline && partnerStatus == ST_SLEEPING && sleepSceneDrawn) {
     updateZzzAnimation(PARTNER_CX, PARTNER_CY);
   }
 }

@@ -154,12 +154,18 @@ MyStatus    myStatus      = ST_FREE;
 // Partner status & timezone — defaults for pre-MQTT layout testing
 MyStatus    partnerStatus  = ST_MISS_YOU;
 int         partnerTzIndex = 20;
+bool        partnerOnline  = false;
+uint32_t    partnerLastSeenMs = 0;
 
 // Partner time override for pre-MQTT testing
 bool        partnerTimeValid = false;
 time_t      partnerEpoch     = 0;
 bool        partnerStatusDirty = false;
 bool        partnerInfoDirty   = false;
+time_t      partnerLastSeenEpoch = 0;
+time_t      partnerOfflineSinceEpoch = 0;
+bool        partnerPresenceKnown = false;
+bool        mqttConnected = false;
 
 const char* statusText[ST_COUNT] = {
   "FREE", "BUSY", "SLEEPING", "MISS YOU", "BAD DAY"

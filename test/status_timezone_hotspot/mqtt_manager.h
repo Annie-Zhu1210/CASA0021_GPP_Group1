@@ -59,10 +59,12 @@
 static const char TOPIC_MY_STATUS[] = MQTT_BASE "/" DEVICE_ID_STR "/status";
 static const char TOPIC_MY_TIME[]   = MQTT_BASE "/" DEVICE_ID_STR "/time";
 static const char TOPIC_MY_TZ[]     = MQTT_BASE "/" DEVICE_ID_STR "/tz";
+static const char TOPIC_MY_HB[]     = MQTT_BASE "/" DEVICE_ID_STR "/hb";
 
 static const char TOPIC_PT_STATUS[] = MQTT_BASE "/" PARTNER_ID_STR "/status";
 static const char TOPIC_PT_TIME[]   = MQTT_BASE "/" PARTNER_ID_STR "/time";
 static const char TOPIC_PT_TZ[]     = MQTT_BASE "/" PARTNER_ID_STR "/tz";
+static const char TOPIC_PT_HB[]     = MQTT_BASE "/" PARTNER_ID_STR "/hb";
 
 // Internal state
 static WiFiClient _mqttWifiClient;
@@ -70,12 +72,40 @@ static PubSubClient _mqttClient(_mqttWifiClient);
 
 static uint32_t _mqttLastPublishMs = 0;
 static uint32_t _mqttLastReconnectMs = 0;
+static uint32_t _mqttConnectedSinceMs = 0;
 static constexpr uint32_t MQTT_PUBLISH_INTERVAL_MS = 5000;
 static constexpr uint32_t MQTT_RECONNECT_INTERVAL_MS = 10000;
+static constexpr uint32_t PARTNER_OFFLINE_TIMEOUT_MS = 30000;
 
 // Track last-published values to avoid redundant publishes
 static int _lastPublishedStatus = -1;
 static int _lastPublishedTz = -1;
+static void _mqttPublish();
+
+static void _markPartnerSeen(time_t seenEpoch = 0) {
+  partnerLastSeenMs = millis();
+  if (seenEpoch > 100000) partnerLastSeenEpoch = seenEpoch;
+  else {
+    time_t now = time(nullptr);
+    if (now > 100000) partnerLastSeenEpoch = now;
+  }
+  partnerPresenceKnown = true;
+  partnerOfflineSinceEpoch = 0;
+  if (!partnerOnline) {
+    partnerOnline = true;
+    partnerStatusDirty = true;
+    partnerInfoDirty = true;
+  }
+}
+
+static void _mqttPublishHeartbeatNow() {
+  if (!_mqttClient.connected()) return;
+  char buf[24];
+  time_t now = time(nullptr);
+  if (now > 100000) snprintf(buf, sizeof(buf), "%ld", (long)now);
+  else snprintf(buf, sizeof(buf), "0");
+  _mqttClient.publish(TOPIC_MY_HB, buf, false);
+}
 
 // Callback: called when a subscribed message arrives
 static void _mqttCallback(char* topic, byte* payload, unsigned int length) {
@@ -97,6 +127,7 @@ static void _mqttCallback(char* topic, byte* payload, unsigned int length) {
     long epoch = atol(buf);
     if (epoch > 100000) {
       partnerEpoch = (time_t)epoch;
+      partnerLastSeenEpoch = (time_t)epoch;
       partnerTimeValid = true;
       partnerInfoDirty = true;
     }
@@ -106,6 +137,9 @@ static void _mqttCallback(char* topic, byte* payload, unsigned int length) {
       partnerTzIndex = idx;
       partnerInfoDirty = true;
     }
+  } else if (strcmp(topic, TOPIC_PT_HB) == 0) {
+    long ep = atol(buf);
+    _markPartnerSeen((ep > 100000) ? (time_t)ep : 0);
   }
 }
 
@@ -114,6 +148,7 @@ static void _mqttSubscribe() {
   _mqttClient.subscribe(TOPIC_PT_STATUS);
   _mqttClient.subscribe(TOPIC_PT_TIME);
   _mqttClient.subscribe(TOPIC_PT_TZ);
+  _mqttClient.subscribe(TOPIC_PT_HB);
 }
 
 // Connect / reconnect
@@ -129,6 +164,11 @@ static bool _mqttConnect() {
     _mqttSubscribe();
     _lastPublishedStatus = -1;
     _lastPublishedTz = -1;
+    mqttConnected = true;
+    _mqttConnectedSinceMs = millis();
+    _mqttPublishHeartbeatNow();  // announce presence immediately after connect
+    _mqttPublish();              // publish status/tz/time immediately as well
+    _mqttLastPublishMs = millis();
     return true;
   }
   return false;
@@ -155,6 +195,9 @@ static void _mqttPublish() {
     snprintf(buf, sizeof(buf), "%ld", (long)now);
     _mqttClient.publish(TOPIC_MY_TIME, buf, false);
   }
+  if (now > 100000) snprintf(buf, sizeof(buf), "%ld", (long)now);
+  else snprintf(buf, sizeof(buf), "0");
+  _mqttClient.publish(TOPIC_MY_HB, buf, false);
 }
 
 // Public API
@@ -168,10 +211,21 @@ void mqttInit() {
 
 
 void mqttLoop() {
-  if (WiFi.status() != WL_CONNECTED) return;
+  uint32_t now = millis();
+  if (WiFi.status() != WL_CONNECTED) {
+    mqttConnected = false;
+    if (partnerOnline || partnerPresenceKnown) {
+      partnerOnline = false;
+      partnerPresenceKnown = false;  // unknown while local network is down
+      partnerTimeValid = false;
+      partnerStatusDirty = true;
+      partnerInfoDirty = true;
+    }
+    return;
+  }
 
   if (!_mqttClient.connected()) {
-    uint32_t now = millis();
+    mqttConnected = false;
     if (now - _mqttLastReconnectMs >= MQTT_RECONNECT_INTERVAL_MS) {
       _mqttLastReconnectMs = now;
       _mqttConnect();
@@ -179,9 +233,31 @@ void mqttLoop() {
     return;
   }
 
+  mqttConnected = true;
   _mqttClient.loop();
 
-  uint32_t now = millis();
+  // If we've been connected for a while but have never seen partner heartbeat,
+  // mark as offline (known).
+  if (!partnerPresenceKnown && (now - _mqttConnectedSinceMs >= PARTNER_OFFLINE_TIMEOUT_MS)) {
+    partnerPresenceKnown = true;
+    partnerOnline = false;
+    partnerTimeValid = false;
+    time_t ep = time(nullptr);
+    if (ep > 100000) partnerOfflineSinceEpoch = ep;
+    partnerStatusDirty = true;
+    partnerInfoDirty = true;
+  }
+
+  if (partnerOnline && (now - partnerLastSeenMs >= PARTNER_OFFLINE_TIMEOUT_MS)) {
+    partnerOnline = false;
+    partnerPresenceKnown = true;
+    partnerTimeValid = false;
+    time_t ep = time(nullptr);
+    if (ep > 100000) partnerOfflineSinceEpoch = ep;
+    partnerStatusDirty = true;
+    partnerInfoDirty = true;
+  }
+
   if (now - _mqttLastPublishMs >= MQTT_PUBLISH_INTERVAL_MS) {
     _mqttLastPublishMs = now;
     _mqttPublish();
