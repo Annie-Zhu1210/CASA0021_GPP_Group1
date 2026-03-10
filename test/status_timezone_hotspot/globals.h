@@ -160,6 +160,7 @@ uint32_t    partnerLastSeenMs = 0;
 // Partner time override for pre-MQTT testing
 bool        partnerTimeValid = false;
 time_t      partnerEpoch     = 0;
+uint32_t    partnerTimeRxMs  = 0;
 bool        partnerStatusDirty = false;
 bool        partnerInfoDirty   = false;
 time_t      partnerLastSeenEpoch = 0;

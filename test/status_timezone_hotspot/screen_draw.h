@@ -430,6 +430,49 @@ void drawClockHmsIncremental(int x, int y, int textSize, uint16_t fg, uint16_t b
   prevS = s;
 }
 
+void drawClockHmIncremental(int x, int y, int textSize, uint16_t fg, uint16_t bg,
+                            int h, int m,
+                            int& prevH, int& prevM,
+                            bool& prevValid, bool validNow) {
+  tft.setTextDatum(lgfx::top_left);
+  tft.setTextSize(textSize);
+  int digitW = tft.textWidth("0");
+  int colonW = tft.textWidth(":");
+  int charH = tft.fontHeight();
+  int hX = x;
+  int c1X = hX + digitW * 2;
+  int mX = c1X + colonW;
+
+  if (!validNow) {
+    if (prevValid || prevH != -2 || prevM != -2) {
+      tft.fillRect(x, y, digitW * 4 + colonW, charH, bg);
+      tft.setTextColor(TFT_ORANGE, bg);
+      tft.drawString("--:--", x, y);
+    }
+    prevValid = false;
+    prevH = prevM = -2;
+    return;
+  }
+
+  bool full = !prevValid || prevH < 0 || prevM < 0;
+  prevValid = true;
+
+  if (full) {
+    drawClockField2(hX, y, h, fg, bg, digitW, charH);
+    tft.setTextColor(fg, bg);
+    tft.drawString(":", c1X, y);
+    drawClockField2(mX, y, m, fg, bg, digitW, charH);
+    prevH = h;
+    prevM = m;
+    return;
+  }
+
+  if (h != prevH) drawClockField2(hX, y, h, fg, bg, digitW, charH);
+  if (m != prevM) drawClockField2(mX, y, m, fg, bg, digitW, charH);
+  prevH = h;
+  prevM = m;
+}
+
 void drawPartnerInfoStrip() {
   tft.fillRect(PINFO_X, 0, PINFO_W, TOP_STRIP_H, TFT_BLACK);
   char label[24];
@@ -491,6 +534,7 @@ void drawPartnerTimeOnly() {
     setenv("TZ", kTimezones[partnerTzIndex].posix, 1);
     tzset();
     time_t ep = partnerEpoch;
+    if (partnerTimeRxMs > 0) ep += (time_t)((millis() - partnerTimeRxMs) / 1000UL);
     localtime_r(&ep, &ti);
     setenv("TZ", restore, 1);
     tzset();
@@ -499,10 +543,11 @@ void drawPartnerTimeOnly() {
     s = ti.tm_sec;
     valid = true;
   }
-  drawClockHmsIncremental(PINFO_X, PINFO_TIME_Y, 2, TFT_WHITE, TFT_BLACK,
-                          h, m, s,
-                          prevPartnerHour, prevPartnerMinute, prevPartnerSecond,
-                          prevPartnerTimeValid, valid);
+  drawClockHmIncremental(PINFO_X, PINFO_TIME_Y, 2, TFT_WHITE, TFT_BLACK,
+                         h, m,
+                         prevPartnerHour, prevPartnerMinute,
+                         prevPartnerTimeValid, valid);
+  prevPartnerSecond = s;
 }
 
 // Self information strip
@@ -527,10 +572,11 @@ void drawSelfPanelTimeOnly() {
   int h = valid ? ti.tm_hour : 0;
   int m = valid ? ti.tm_min : 0;
   int s = valid ? ti.tm_sec : 0;
-  drawClockHmsIncremental(SINFO_X, SINFO_TIME_Y, 1, TFT_WHITE, bg,
-                          h, m, s,
-                          prevSelfHour, prevSelfMinute, prevSelfSecond,
-                          prevSelfTimeValid, valid);
+  drawClockHmIncremental(SINFO_X, SINFO_TIME_Y, 1, TFT_WHITE, bg,
+                         h, m,
+                         prevSelfHour, prevSelfMinute,
+                         prevSelfTimeValid, valid);
+  prevSelfSecond = s;
 }
 
 // Self emoji

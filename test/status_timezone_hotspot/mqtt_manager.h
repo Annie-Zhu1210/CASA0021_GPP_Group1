@@ -71,9 +71,11 @@ static WiFiClient _mqttWifiClient;
 static PubSubClient _mqttClient(_mqttWifiClient);
 
 static uint32_t _mqttLastPublishMs = 0;
+static uint32_t _mqttLastTimePublishMs = 0;
 static uint32_t _mqttLastReconnectMs = 0;
 static uint32_t _mqttConnectedSinceMs = 0;
 static constexpr uint32_t MQTT_PUBLISH_INTERVAL_MS = 5000;
+static constexpr uint32_t MQTT_TIME_PUBLISH_INTERVAL_MS = 60000;
 static constexpr uint32_t MQTT_RECONNECT_INTERVAL_MS = 10000;
 static constexpr uint32_t PARTNER_OFFLINE_TIMEOUT_MS = 30000;
 
@@ -81,6 +83,7 @@ static constexpr uint32_t PARTNER_OFFLINE_TIMEOUT_MS = 30000;
 static int _lastPublishedStatus = -1;
 static int _lastPublishedTz = -1;
 static void _mqttPublish();
+static void _mqttPublishTimeNow();
 
 static void _markPartnerSeen(time_t seenEpoch = 0) {
   partnerLastSeenMs = millis();
@@ -127,6 +130,7 @@ static void _mqttCallback(char* topic, byte* payload, unsigned int length) {
     long epoch = atol(buf);
     if (epoch > 100000) {
       partnerEpoch = (time_t)epoch;
+      partnerTimeRxMs = millis();
       partnerLastSeenEpoch = (time_t)epoch;
       partnerTimeValid = true;
       partnerInfoDirty = true;
@@ -167,8 +171,10 @@ static bool _mqttConnect() {
     mqttConnected = true;
     _mqttConnectedSinceMs = millis();
     _mqttPublishHeartbeatNow();  // announce presence immediately after connect
-    _mqttPublish();              // publish status/tz/time immediately as well
+    _mqttPublish();              // publish status/tz/hb immediately as well
+    _mqttPublishTimeNow();       // publish time immediately on connect
     _mqttLastPublishMs = millis();
+    _mqttLastTimePublishMs = _mqttLastPublishMs;
     return true;
   }
   return false;
@@ -191,13 +197,19 @@ static void _mqttPublish() {
   }
 
   time_t now = time(nullptr);
+  if (now > 100000) snprintf(buf, sizeof(buf), "%ld", (long)now);
+  else snprintf(buf, sizeof(buf), "0");
+  _mqttClient.publish(TOPIC_MY_HB, buf, false);
+}
+
+static void _mqttPublishTimeNow() {
+  if (!_mqttClient.connected()) return;
+  char buf[24];
+  time_t now = time(nullptr);
   if (now > 100000) {
     snprintf(buf, sizeof(buf), "%ld", (long)now);
     _mqttClient.publish(TOPIC_MY_TIME, buf, false);
   }
-  if (now > 100000) snprintf(buf, sizeof(buf), "%ld", (long)now);
-  else snprintf(buf, sizeof(buf), "0");
-  _mqttClient.publish(TOPIC_MY_HB, buf, false);
 }
 
 // Public API
@@ -261,6 +273,10 @@ void mqttLoop() {
   if (now - _mqttLastPublishMs >= MQTT_PUBLISH_INTERVAL_MS) {
     _mqttLastPublishMs = now;
     _mqttPublish();
+  }
+  if (now - _mqttLastTimePublishMs >= MQTT_TIME_PUBLISH_INTERVAL_MS) {
+    _mqttLastTimePublishMs = now;
+    _mqttPublishTimeNow();
   }
 }
 
