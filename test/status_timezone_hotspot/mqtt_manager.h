@@ -77,7 +77,7 @@ static uint32_t _mqttConnectedSinceMs = 0;
 static constexpr uint32_t MQTT_PUBLISH_INTERVAL_MS = 5000;
 static constexpr uint32_t MQTT_TIME_PUBLISH_INTERVAL_MS = 60000;
 static constexpr uint32_t MQTT_RECONNECT_INTERVAL_MS = 10000;
-static constexpr uint32_t PARTNER_OFFLINE_TIMEOUT_MS = 30000;
+static constexpr uint32_t PARTNER_OFFLINE_TIMEOUT_MS = 130000;
 
 // Track last-published values to avoid redundant publishes
 static int _lastPublishedStatus = -1;
@@ -117,6 +117,9 @@ static void _mqttCallback(char* topic, byte* payload, unsigned int length) {
   memcpy(buf, payload, len);
   buf[len] = '\0';
 
+  // Pragmatic rule: any partner topic means partner is reachable now.
+  _markPartnerSeen();
+
   if (strcmp(topic, TOPIC_PT_STATUS) == 0) {
     int s = atoi(buf);
     if (s >= 0 && s < ST_COUNT) {
@@ -128,6 +131,7 @@ static void _mqttCallback(char* topic, byte* payload, unsigned int length) {
     }
   } else if (strcmp(topic, TOPIC_PT_TIME) == 0) {
     long epoch = atol(buf);
+    _markPartnerSeen((epoch > 100000) ? (time_t)epoch : 0);
     if (epoch > 100000) {
       partnerEpoch = (time_t)epoch;
       partnerTimeRxMs = millis();
@@ -208,8 +212,10 @@ static void _mqttPublishTimeNow() {
   time_t now = time(nullptr);
   if (now > 100000) {
     snprintf(buf, sizeof(buf), "%ld", (long)now);
-    _mqttClient.publish(TOPIC_MY_TIME, buf, false);
+  } else {
+    snprintf(buf, sizeof(buf), "0");
   }
+  _mqttClient.publish(TOPIC_MY_TIME, buf, false);
 }
 
 // Public API
@@ -247,6 +253,9 @@ void mqttLoop() {
 
   mqttConnected = true;
   _mqttClient.loop();
+  // Callback may update partnerLastSeenMs using a later millis() value.
+  // Refresh now to avoid unsigned underflow in the timeout checks below.
+  now = millis();
 
   // If we've been connected for a while but have never seen partner heartbeat,
   // mark as offline (known).
