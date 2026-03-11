@@ -121,6 +121,19 @@ static void _handleSave() {
   String newPass = _wifiServer.arg("password");
   String newPairing = _wifiServer.arg("pairing");
   DBG_LOG("[WiFi] Form received. SSID: " + newSSID);
+
+  // Reject if pairing code doesn't match
+  if (newPairing != PAIRING_CODE) {
+    DBG_LOG("[WiFi] Wrong pairing code: " + newPairing);
+    _wifiServer.send(200, "text/html",
+      "<html><body style='font-family:Arial;text-align:center;padding:50px'>"
+      "<h2 style='color:#c0392b'>Wrong pairing code</h2>"
+      "<p>Please check the code with your partner and try again.</p>"
+      "<a href='/'>Go back</a>"
+      "</body></html>");
+    return;
+  }
+
   _wifiServer.send(200, "text/html", success_html);
   _dnsServer.stop();
   _wifiServer.stop();
@@ -173,6 +186,20 @@ void wifiStartHotspot() {
   });
   _wifiServer.begin();
   DBG_LOG("[WiFi] Captive portal running on SSID: " AP_SSID);
+}
+
+void wifiStopHotspot() {
+  if (_hotspotState == HotspotState::IDLE) return;
+  _dnsServer.stop();
+  _wifiServer.stop();
+  WiFi.softAPdisconnect(true);
+  WiFi.mode(WIFI_STA);
+  _hotspotState = HotspotState::IDLE;
+  DBG_LOG("[WiFi] Hotspot stopped by user.");
+  // Resume background connection attempts with saved credentials
+  if (_savedSSID.length() > 0) {
+    WiFi.begin(_savedSSID.c_str(), _savedPassword.c_str());
+  }
 }
 
 bool wifiPollHotspot() {

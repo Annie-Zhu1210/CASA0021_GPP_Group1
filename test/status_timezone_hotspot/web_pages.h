@@ -192,7 +192,7 @@ const char index_html[] PROGMEM = R"rawliteral(
             
             <div class="pairingBlock">
                 <label>Pairing Code:</label>
-                <input type="text" name="pairing" required placeholder="Share this with your partner">
+                <input type="text" name="pairing" required placeholder="Enter pairing code">
             </div>
             
             <button type="submit">Save & Connect</button>

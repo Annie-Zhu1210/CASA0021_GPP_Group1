@@ -794,7 +794,7 @@ void drawWelcomePage() {
   tft.setTextDatum(lgfx::middle_center);
   tft.setTextColor(TFT_CYAN, TFT_BLACK);
   tft.setTextSize(3);
-  tft.drawString("Welcome", tft.width() / 2, 58);
+  tft.drawString("Welcome to MoodLink", tft.width() / 2, 58);
   tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
   tft.setTextSize(2);
   tft.drawString("Smart Desktop Companion", tft.width() / 2, 96);
@@ -1310,6 +1310,7 @@ void drawWiFiConnectingPage() {
   tft.setTextSize(2);
   tft.drawString("Waiting...", cx2, 210);
   tft.setTextDatum(lgfx::top_left);
+  drawButton(10, 250, tft.width() - 20, 44, "Stop and Exit", false);
 }
 
 void drawWiFiResultPage(bool success) {

@@ -2,8 +2,9 @@
 #define CONFIG_H
 
 // Hotspot Configuration
-#define AP_SSID "ProductName-Setup"
+#define AP_SSID "MoodLink-Setup"
 #define AP_PASSWORD "12345678"  // minimum 8 characters
+#define PAIRING_CODE "your_pairing_code"
 
 // Device Identity
 #define DEVICE_ID 1  // Change to 2 for another device

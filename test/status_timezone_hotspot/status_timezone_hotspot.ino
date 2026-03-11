@@ -1073,7 +1073,24 @@ void handleWiFiInfo() {
 void handleWiFiConnecting() {
   ensureWifiInit();
   consumeEncoderStep();
-  clearButtonEvents();
+
+  // Allow user to cancel the connection process and go back
+  if (takeShortPressEvent()) {
+    clearButtonEvents();
+    wifiStopHotspot();
+    if (wifiFromBootFlow) {
+      wifiFromBootFlow = false;
+      screenState = SCREEN_BOOT_NETWORK;
+      bootMenuIndex = 0;
+      drawBootNetworkPage();
+    } else {
+      screenState = SCREEN_WIFI_INFO;
+      wifiMenuIndex = 0;
+      drawWiFiInfoPage();
+    }
+    return;
+  }
+
   if (wifiPollHotspot()) {
     screenState = SCREEN_WIFI_RESULT;
     drawWiFiResultPage(wifiResultOk);
