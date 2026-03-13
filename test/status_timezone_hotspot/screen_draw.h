@@ -335,13 +335,7 @@ void drawSleepingBearStatic(int cx, int cy) {
   tft.drawArc(blankX + U(70), blankY + U(58), U(32), U(18), 210, 330, blanketHi);
   tft.drawArc(blankX + U(128), blankY + U(68), U(38), U(22), 210, 330, blanketHi);
   tft.drawArc(blankX + U(30), blankY + U(30), U(22), U(16), 40, 140, blanketSh);
-  int pawX = blankX + U(125), pawY = blankY + U(24), pawR = U(10);
-  tft.fillCircle(pawX + U(2), pawY + U(2), pawR, furShadow);
-  tft.fillCircle(pawX, pawY, pawR, furBase);
-  uint16_t bean = rgb565(235, 175, 175);
-  tft.fillCircle(pawX - U(5), pawY - U(2), U(2), bean);
-  tft.fillCircle(pawX - U(1), pawY - U(4), U(2), bean);
-  tft.fillCircle(pawX + U(3), pawY - U(2), U(2), bean);
+  
 }
 void startSleepScene(int cx, int cy) {
   drawSleepingBearStatic(cx, cy);
