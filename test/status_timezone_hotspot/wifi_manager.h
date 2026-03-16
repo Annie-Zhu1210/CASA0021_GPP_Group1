@@ -27,6 +27,17 @@ static String _savedSSID = "";
 static String _savedPassword = "";
 static String _savedPairing = "";
 
+static String _escapeJson(const String& s) {
+  String out;
+  out.reserve(s.length() + 8);
+  for (size_t i = 0; i < s.length(); i++) {
+    char c = s[i];
+    if (c == '\\' || c == '"') out += '\\';
+    out += c;
+  }
+  return out;
+}
+
 enum class HotspotState { IDLE,
                           RUNNING,
                           SUBMITTED,
@@ -110,6 +121,19 @@ static void _handleSave() {
   String newPass = _wifiServer.arg("password");
   String newPairing = _wifiServer.arg("pairing");
   DBG_LOG("[WiFi] Form received. SSID: " + newSSID);
+
+  // Reject if pairing code doesn't match
+  if (newPairing != PAIRING_CODE) {
+    DBG_LOG("[WiFi] Wrong pairing code: " + newPairing);
+    _wifiServer.send(200, "text/html",
+      "<html><body style='font-family:Arial;text-align:center;padding:50px'>"
+      "<h2 style='color:#c0392b'>Wrong pairing code</h2>"
+      "<p>Please check the code with your partner and try again.</p>"
+      "<a href='/'>Go back</a>"
+      "</body></html>");
+    return;
+  }
+
   _wifiServer.send(200, "text/html", success_html);
   _dnsServer.stop();
   _wifiServer.stop();
@@ -122,11 +146,32 @@ static void _handleSave() {
   _hotspotState = HotspotState::DONE;
 }
 
+static void _handleScan() {
+  int n = WiFi.scanNetworks(false, true);
+  String json = "[";
+  for (int i = 0; i < n; i++) {
+    if (i > 0) json += ",";
+    String ssid = _escapeJson(WiFi.SSID(i));
+    int rssi = WiFi.RSSI(i);
+    bool open = (WiFi.encryptionType(i) == WIFI_AUTH_OPEN);
+    json += "{\"ssid\":\"";
+    json += ssid;
+    json += "\",\"rssi\":";
+    json += String(rssi);
+    json += ",\"open\":";
+    json += (open ? "true" : "false");
+    json += "}";
+  }
+  json += "]";
+  WiFi.scanDelete();
+  _wifiServer.send(200, "application/json", json);
+}
+
 void wifiStartHotspot() {
   _hotspotState = HotspotState::RUNNING;
   wifiResultOk = false;
   WiFi.disconnect(true);
-  WiFi.mode(WIFI_AP);
+  WiFi.mode(WIFI_AP_STA);
   WiFi.softAP(AP_SSID, AP_PASSWORD);
   IPAddress ip = WiFi.softAPIP();
   DBG_LOG("[WiFi] AP started. IP: " + ip.toString());
@@ -134,12 +179,27 @@ void wifiStartHotspot() {
   _wifiServer.on("/", HTTP_GET, []() {
     _wifiServer.send(200, "text/html", index_html);
   });
+  _wifiServer.on("/scan", HTTP_GET, _handleScan);
   _wifiServer.on("/save", HTTP_POST, _handleSave);
   _wifiServer.onNotFound([]() {
     _wifiServer.send(200, "text/html", index_html);
   });
   _wifiServer.begin();
   DBG_LOG("[WiFi] Captive portal running on SSID: " AP_SSID);
+}
+
+void wifiStopHotspot() {
+  if (_hotspotState == HotspotState::IDLE) return;
+  _dnsServer.stop();
+  _wifiServer.stop();
+  WiFi.softAPdisconnect(true);
+  WiFi.mode(WIFI_STA);
+  _hotspotState = HotspotState::IDLE;
+  DBG_LOG("[WiFi] Hotspot stopped by user.");
+  // Resume background connection attempts with saved credentials
+  if (_savedSSID.length() > 0) {
+    WiFi.begin(_savedSSID.c_str(), _savedPassword.c_str());
+  }
 }
 
 bool wifiPollHotspot() {

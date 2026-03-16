@@ -41,7 +41,8 @@ public:
     {
       auto cfg = _bus.config();
       cfg.port       = 0;
-      cfg.freq_write = 2000000;
+      cfg.freq_write = 8000000;  //   to reduce pixel corruption
+      cfg.freq_read  = 4000000;  // ← added explicit read frequency
       cfg.pin_wr     = TFT_WR;
       cfg.pin_rd     = -1;
       cfg.pin_rs     = TFT_DC;
@@ -60,7 +61,11 @@ public:
       cfg.memory_width  = 320; cfg.memory_height = 480;
       cfg.panel_width   = 320; cfg.panel_height  = 480;
       cfg.offset_x = 0;        cfg.offset_y = 0;
-      cfg.invert = false;      cfg.rgb_order = false;
+      cfg.readable    = false;   // ← added: no read back needed
+      cfg.invert      = false;   // ← added: no inversion
+      cfg.rgb_order   = false;   // ← added: BGR order for ILI9488
+      cfg.dlen_16bit  = false;   // ← critical: forces 18-bit colour for ILI9488
+      cfg.bus_shared  = false;   // ← added: bus not shared with other devices
       _panel.config(cfg);
     }
     setPanel(&_panel);
@@ -76,8 +81,14 @@ struct TimezoneOption {
 struct Rect { int x, y, w, h; };
 
 enum ScreenState {
-  SCREEN_TZ_LIST = 0,
+  SCREEN_WELCOME = 0,
+  SCREEN_BOOT_NETWORK,
+  SCREEN_TZ_LIST,
   SCREEN_TIME_EDIT,
+  SCREEN_DATE_TIME_MENU,
+  SCREEN_SCHEDULE_LIST,
+  SCREEN_SCHEDULE_ADD,
+  SCREEN_SCHEDULE_DELETE,
   SCREEN_EMOJI_HOME,
   SCREEN_MENU,
   SCREEN_WORLD_VIEW,
@@ -97,9 +108,11 @@ enum MyStatus {
 
 const char* const PREF_NS      = "ld-device";
 const char* const KEY_TZ_INDEX = "tz_idx";
+const char* const KEY_AUTO_TIME = "auto_time";
 const char* const KEY_SSID     = "ssid";
 const char* const KEY_PASSWORD = "password";
 const char* const KEY_PAIRING  = "pairing";
+const char* const KEY_SCHEDULES = "scheds";
 
 TimezoneOption kTimezones[] = {
   {"UTC-12","UTC+12","USA (Baker Is.)"},
@@ -135,40 +148,104 @@ const int TZ_COUNT = sizeof(kTimezones) / sizeof(kTimezones[0]);
 LGFX tft;
 
 // Screen & status state
-ScreenState screenState   = SCREEN_TZ_LIST;
+ScreenState screenState   = SCREEN_WELCOME;
 MyStatus    myStatus      = ST_FREE;
 
-// Partner status & timezone - defaults for pre-MQTT layout testing
-// partnerStatus: ST_MISS_YOU shows the heart emoji in the centre
-// partnerTzIndex: 20 = UTC+08 (China/Singapore) - change to taste
+// Partner status & timezone — defaults for pre-MQTT layout testing
 MyStatus    partnerStatus  = ST_MISS_YOU;
 int         partnerTzIndex = 20;
+bool        partnerOnline  = false;
+uint32_t    partnerLastSeenMs = 0;
 
-// Partner time override for pre-MQTT testing (shown as 0:00:00 until MQTT updates it)
-// When MQTT is integrated, set partnerTimeValid = true and partnerEpoch = received epoch
+// Partner time override for pre-MQTT testing
 bool        partnerTimeValid = false;
 time_t      partnerEpoch     = 0;
+uint32_t    partnerTimeRxMs  = 0;
+bool        partnerStatusDirty = false;
+bool        partnerInfoDirty   = false;
+time_t      partnerLastSeenEpoch = 0;
+time_t      partnerOfflineSinceEpoch = 0;
+bool        partnerPresenceKnown = false;
+bool        mqttConnected = false;
 
 const char* statusText[ST_COUNT] = {
   "FREE", "BUSY", "SLEEPING", "MISS YOU", "BAD DAY"
 };
 
+enum ScheduleRepeat {
+  SCH_ONCE = 0,
+  SCH_DAILY,
+  SCH_WEEKLY,
+  SCH_MONTHLY,
+  SCH_REPEAT_COUNT
+};
+
+struct ScheduleItem {
+  uint8_t used;
+  uint8_t status;
+  uint8_t repeat;
+  uint16_t sy;
+  uint8_t sm;
+  uint8_t sd;
+  uint8_t sh;
+  uint8_t smin;
+  uint16_t ey;
+  uint8_t em;
+  uint8_t ed;
+  uint8_t eh;
+  uint8_t emin;
+};
+
+static constexpr int MAX_SCHEDULES = 4;
+ScheduleItem schedules[MAX_SCHEDULES] = {};
+
 // Timezone and menu navigation
 int  tzIndex        = 0;
 int  tzListIndex    = 0;
 int  menuIndex      = 0;
+int  bootMenuIndex  = 0;
+int  dateTimeMenuIndex = 0;
 int  worldBaseIndex = 0;
-bool startupFlow    = true;
+bool startupFlow    = false;
+bool wifiFromBootFlow = false;
+bool fromDateTimeMenu = false;
+int  scheduleMenuIndex = 0;
+int  scheduleDeleteIndex = 0;
+
+// Date/time auto mode
+bool autoTimeEnabled = true;
+bool autoTimeSynced = false;
+uint32_t autoTimeLastAttemptMs = 0;
 
 // Time editor fields
 int editYear   = 2026, editMonth  = 1, editDay    = 1;
 int editHour   = 12,   editMinute = 0, editField  = 0;
+
+// Schedule add editor
+ScheduleItem scheduleDraft = {};
+int scheduleAddStep = 0;     // 0=status 1=start 2=end 3=repeat 4=save/cancel
+int scheduleAddField = 0;    // Y/M/D/H/M for start/end steps
+int scheduleAddAction = 0;   // 0=save 1=cancel
+bool scheduleAddFull = false;
+bool scheduleAddInvalidRange = false;
+
+// Runtime schedule override
+bool scheduleOverrideActive = false;
+int  scheduleActiveSlot = -1;
+MyStatus scheduleRestoreStatus = ST_FREE;
+uint32_t scheduleLastCheckMs = 0;
 
 // Emoji home screen
 float  SCALE           = 1.2f;
 bool   homeOverlayDrawn = false;
 time_t lastHomeSecond   = -1;
 bool   sleepSceneDrawn  = false;
+int    homeWifiIconState = -1;
+int    headerWifiIconState = -1;
+int    prevSelfHour = -1, prevSelfMinute = -1, prevSelfSecond = -1;
+int    prevPartnerHour = -1, prevPartnerMinute = -1, prevPartnerSecond = -1;
+bool   prevSelfTimeValid = false;
+bool   prevPartnerTimeValid = false;
 
 // World clock dirty-flags
 bool worldLayoutReady      = false;
