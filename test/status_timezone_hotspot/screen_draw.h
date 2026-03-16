@@ -32,7 +32,7 @@ static constexpr int TOP_STRIP_H = 48;
 static constexpr int SELF_PX_BODY = DIVIDER_X + 1;
 
 // Wi-Fi icon
-static constexpr int WIFI_IX = 4;
+static constexpr int WIFI_IX = 16;
 static constexpr int WIFI_IY = 8;
 static constexpr int WIFI_IW = 38;
 static constexpr int WIFI_IH = 26;
@@ -87,7 +87,7 @@ void drawHomeWiFiIndicator(bool force = false) {
 }
 
 void drawWiFiIndicator(bool force = false) {
-  const int iw = 30, ih = 22, ox = tft.width() - iw - 8, oy = 8;
+  const int iw = 30, ih = 22, ox = tft.width() - iw - 28, oy = 8;
   bool connected = (WiFi.status() == WL_CONNECTED);
   int state = connected ? 1 : 0;
   if (!force && headerWifiIconState == state) return;
@@ -113,7 +113,7 @@ void drawHeader(const char* title) {
   tft.setTextColor(TFT_CYAN, TFT_BLACK);
   tft.setTextSize(2);
   tft.setTextDatum(lgfx::top_left);
-  tft.drawString(title, 10, 10);
+  tft.drawString(title, 30, 10);
   tft.drawFastHLine(10, 36, tft.width() - 20, TFT_DARKGREY);
   drawWiFiIndicator(true);
 }
