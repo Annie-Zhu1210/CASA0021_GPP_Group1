@@ -138,9 +138,9 @@ LGFX tft;
 ScreenState screenState   = SCREEN_TZ_LIST;
 MyStatus    myStatus      = ST_FREE;
 
-// Partner status & timezone — defaults for pre-MQTT layout testing
+// Partner status & timezone - defaults for pre-MQTT layout testing
 // partnerStatus: ST_MISS_YOU shows the heart emoji in the centre
-// partnerTzIndex: 20 = UTC+08 (China/Singapore) — change to taste
+// partnerTzIndex: 20 = UTC+08 (China/Singapore) - change to taste
 MyStatus    partnerStatus  = ST_MISS_YOU;
 int         partnerTzIndex = 20;
 
