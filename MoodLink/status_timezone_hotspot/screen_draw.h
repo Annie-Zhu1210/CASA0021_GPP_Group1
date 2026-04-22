@@ -272,7 +272,7 @@ void drawSleepingZs(int cx, int cy, uint16_t bgCol) {
   }
 }
 
-// Sleeping bear for partner's status (enough space to show the shole emoji)
+// Sleeping bear for partner's status 
 void drawZ_bear(float s, int x, int y, int size, uint16_t col) {
   int t = max(1, (int)(2 * s));
   for (int i = 0; i < t; i++) {

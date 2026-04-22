@@ -41,8 +41,8 @@ public:
     {
       auto cfg = _bus.config();
       cfg.port       = 0;
-      cfg.freq_write = 8000000;  //   to reduce pixel corruption
-      cfg.freq_read  = 4000000;  // ← added explicit read frequency
+      cfg.freq_write = 8000000;  
+      cfg.freq_read  = 4000000; 
       cfg.pin_wr     = TFT_WR;
       cfg.pin_rd     = -1;
       cfg.pin_rs     = TFT_DC;
@@ -61,11 +61,11 @@ public:
       cfg.memory_width  = 320; cfg.memory_height = 480;
       cfg.panel_width   = 320; cfg.panel_height  = 480;
       cfg.offset_x = 0;        cfg.offset_y = 0;
-      cfg.readable    = false;   // ← added: no read back needed
-      cfg.invert      = false;   // ← added: no inversion
-      cfg.rgb_order   = false;   // ← added: BGR order for ILI9488
-      cfg.dlen_16bit  = false;   // ← critical: forces 18-bit colour for ILI9488
-      cfg.bus_shared  = false;   // ← added: bus not shared with other devices
+      cfg.readable    = false;  
+      cfg.invert      = false;  
+      cfg.rgb_order   = false;   
+      cfg.dlen_16bit  = false;   
+      cfg.bus_shared  = false;  
       _panel.config(cfg);
     }
     setPanel(&_panel);
