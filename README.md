@@ -38,8 +38,6 @@ The five statuses are kept simple but expressive to allow for a clear understand
 
 > Image placeholder: insert sleeping status figure.
 
-#### Time and Schedule
-
 For the time and scheduling function, our design combines local interaction with online services and saved settings on the ESP32-S3 board. In the early version of MoodLink, time and timezone were set manually by the rotary encoder, which was inconvenient after restarts or when used in different countries. So we added an Auto Time mode to improve this. When connected to Wi-Fi, it can obtain the UTC offset through an IP-based API and synchronise the clock with NTP to automatically update the time and time zone (Espressif Systems, n.d.-c; IP-API, n.d.). We also kept the manual option. It remains useful when the network is unavailable or users want direct control. The ESP32 saves the selected mode and timezone in Preferences so that the main settings are retained after restart (Espressif Systems, n.d.-b).
 
 > Image placeholder: insert Figure 7 Auto Time Mode.
@@ -50,19 +48,15 @@ The schedule function was also developed step by step. Firstly, device status co
 
 > Image placeholder: insert Figure 9 Schedule Function.
 
-#### Display Configuration
-
 Issues with pixel corruption and colour display in the display occurred due to the ILI9488 driver used in the TFT screen hardware specification not matching the LovyanGFX configuration. This was addressed through six explicit settings in the code. `cfg.dlen_16bit = false;` was vital to allowing the ILI9488 to support the LovyanGFX default 16-bit colour parallel bus by force correcting the 18-bit transmission. The signal sent by the default 2MHz was unstable in the ESP32 parallel bus, making updates unreliable. Changing it to `cfg.freq_write = 8000000` resolved it. An explicit read frequency, `cfg.freq_read = 4000000`, was needed to reduce unpredictable display colours, as undefined read clocks lead to unpredictable results. Readability was disabled using `readable = false` to prevent bus conflicts, as the display's read pin is tied to a high voltage of 3.3V. ILI9488 and LovyanGFX expect colour data in varying formats (RGB, BGR). `rgb_order = false` was added to ensure the correct channel order. LovyanGFX's assumption of bus sharing was corrected.
 
 > Image placeholder: insert pixelated free status display figure.
-
-#### MQTT Communication
 
 The two MoodLink devices communicate over MQTT, which is a lightweight communication protocol widely used in IoT products (Bandyopadhyay and Bhattacharyya, 2013). The selection of MQTT allows a direct communication approach without knowing IP addresses and a robust system with retained status messages after device reconnection (Naik, 2017). Each device publishes to four topics: emotional status, time in Unix timestamp, timezone index, and heartbeat. Status updates are transmitted immediately on user interaction. The heartbeat was a final design to improve the online/offline indication. Each device publishes a heartbeat every five seconds regardless of activities. If no message is received from the partner device for 130 seconds, the device marks the paired device as offline and displays the time when the partner was last seen. This design ensures the connection state is always communicated to the user rather than silently failing, which is central to MoodLink's aim of providing emotional reassurance rather than uncertainty.
 
 ### Enclosure
 
-The enclosure was developed as a communicative part. All models were built in Fusion 360 and 3D printed in PLA. It integrates all the components and internal wiring into a compact desktop object. The screen is recessed into the upper section. The rotary knob is placed centrally to support comfortable interaction. A knob cover unifies the overall appearance colour and a logo nameplate highlights the unique product features.
+The enclosure (Figure 3.2.1 - Figure 3.2.3) was developed as a communicative part. All models were built in Fusion 360 and 3D printed in PLA. It integrates all the components and internal wiring into a compact desktop object. The screen is recessed into the upper section. The rotary knob is placed centrally to support comfortable interaction. A knob cover (Figure 3.2.4) unifies the overall appearance colour and a logo nameplate (Figure 3.2.5) highlights the unique product features.
 
 > Image placeholder: insert Figure 3.2.1 The assembled enclosure 3D models.
 
@@ -78,7 +72,7 @@ The design was informed by Nabaztag, an ambient device whose rounded and charact
 
 > Image placeholder: insert Figure 3.2.6 Personalised accessories, from left to right: Santa hat, Sorting Hat, rabbit ears.
 
-For the iteration, an earlier prototype used a rectangular screen on a stand, which was functional but visually far from a companion device. A later sketch explored a more rounded enclosure with a clearer head-body relationship. A fully integrated shell was also considered, but a separable structure was adopted because it is easier for debugging and reassembly. These changes improved both the emotional character and the practical usability of MoodLink.
+For the iteration, an earlier prototype (Figure 3.2.7) used a rectangular screen on a stand, which was functional but visually far from a companion device. A later sketch (Figure 3.2.8) explored a more rounded enclosure with a clearer head-body relationship. A fully integrated shell shown in Figure 3.2.9  was also considered, but a separable structure was adopted because it is easier for debugging and reassembly. These changes improved both the emotional character and the practical usability of MoodLink.
 
 > Image placeholder: insert Figure 3.2.7 Sketch of the first version of the enclosure.
 
