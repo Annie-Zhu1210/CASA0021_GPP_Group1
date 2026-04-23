@@ -1,189 +1,136 @@
 # MoodLink
 
-MoodLink is a pair of smart desktop companion devices designed for people in long-distance relationships, including couples, families living apart, and international friends. It uses Wi-Fi, MQTT communication, automatic time synchronisation, a TFT emoji interface, and a 3D-printed enclosure to support passive awareness of a partner's mood, availability, and presence.
-
-Rather than requiring a direct message or phone call, MoodLink allows users to glance at the paired device and understand whether the other person may be free, busy, sleeping, missing them, or having a bad day. This supports lightweight emotional communication and helps reduce uncertainty around when it is appropriate to reach out.
-
 ## Introduction
 
-Living in an increasingly connected and digitised world has contributed to the growth of long-distance relationships, including couples, families living apart, and international friends (DiGiovanni et al., 2026). Although existing technologies such as phones, social media, and messaging platforms facilitate communication, differences in time zones, work schedules, and daily routines often create uncertainty about when contact is appropriate. This challenge is particularly evident in romantic relationships: Neustaedter and Greenberg (2012) found that long-distance couples often experienced feelings of disconnection because they were unable to easily sense their partner's mood, energy level, and availability, which in turn could produce anxiety not fully resolved through calls alone.
+Living in an increasingly connected and digitised world has contributed to the growth of long-distance relationships, including couples, families living apart, and international friends (DiGiovanni et al., 2026). Although existing technologies such as phones, social media, and messaging platforms facilitate communication, differences in time zones, work schedules, and daily routines often create uncertainty about when contact is appropriate. This challenge is particularly evident in romantic relationships: Neustaedter and Greenberg (2012) found that long-distance couples often experienced feelings of disconnection because they were unable to easily sense their partner's mood, energy level, and availability, which in turn could produce anxiety not fully resolved through calls alone. More broadly, loneliness and perceived social disconnection from significant others can negatively affect both psychological and physical wellbeing, especially when separation is prolonged by distance (Cacioppo and Patrick, 2008). At the same time, emotional presence remains an important but often unmet need in long-distance relationships (Dey and de Guzman, 2006). Research on ambient IoT further suggests that such devices can communicate information passively without demanding users' full attention (Davis et al., 2017; Hassenzahl et al., 2012). MoodLink was developed as a Kickstarter project in response to this gap, using ambient IoT technology to help couples, friends, and families maintain awareness of one another's feelings and availability without the fear of interrupting. Rather than requiring direct conversation, it supports passive awareness and lightweight communication, allowing users to feel each other's presence in everyday life. One key scenario is the moment of hesitation before making contact, when a user can simply glance at the paired device to judge whether the other person may be asleep, busy, unavailable, or emotionally low before deciding whether to reach out.
 
-More broadly, loneliness and perceived social disconnection from significant others can negatively affect both psychological and physical wellbeing, especially when separation is prolonged by distance (Cacioppo and Patrick, 2008). At the same time, emotional presence remains an important but often unmet need in long-distance relationships (Dey and de Guzman, 2006). Research on ambient IoT further suggests that such devices can communicate information passively without demanding users' full attention (Davis et al., 2017; Hassenzahl et al., 2012). MoodLink was developed as a Kickstarter-style project in response to this gap, using ambient IoT technology to help couples, friends, and families maintain awareness of one another's feelings and availability without the fear of interrupting.
-
-## Technical Overview
+## Technical Overview (Hardware and Software)
 
 ### Device System
 
 #### Hardware
 
-> Image placeholder: insert Figure 1 showing the hardware component table.
+> Image placeholder: insert Figure 1.
 
-> Image placeholder: insert Figure 2 showing hardware wiring / system components.
+> Image placeholder: insert Figure 2.
 
-MoodLink's hardware components are soldered on a perfboard to minimise the risk of disconnection, ensuring stable shared power rails and grounds. The components were chosen with the aim of facilitating passive interactions that feel tactile and deliberate.
+MoodLink's hardware components are outlined in the table above. Components are soldered on a perfboard to minimise the risk of disconnection, ensuring stable shared power rails and grounds. The components were chosen with the aim of facilitating passive interactions for users that feel tactile and deliberate.
 
 #### Functionalities and Controlling Code
 
-> Image placeholder: insert Figure 3 showing the welcome screen.
+> Image placeholder: insert welcome screen figure.
 
-MoodLink displays a welcome screen that leads users to the main display, which contains the five status modes. Two additional displays were added to improve user interaction: an offline page and a checking page when a partner's connection is not yet confirmed.
+MoodLink displays consist of a welcome screen that leads users to the main display, which contains the five statuses. Two additional displays were added to improve user interactions with the device: an offline page and a checking page when a partner's connection is not yet confirmed.
 
-> Image placeholder: insert Figure 4 showing the offline status page.
+> Image placeholder: insert offline status figure.
 
-The ESP32-S3 board supports a convenient Wi-Fi setup process and keeps the interaction within the device itself without requiring a mobile app. Rather than hardcoding network credentials, we built a captive portal for initial setup, which is commonly used by commercial IoT products. Each MoodLink device connects to the internet through the ESP32-S3's built-in Wi-Fi. On first setup, the device broadcasts a temporary hotspot. When users connect their phone to it, a configuration page is served for entering the home Wi-Fi, password, and pairing code.
+The choice of the ESP32 board allows a convenient Wi-Fi setup process and keeps the interaction within the device itself without a mobile app. Rather than hardcoding network credentials, we built a captive portal for initial setup, which is commonly used by commercial IoT products. Each MoodLink device connects to the internet via the ESP32-S3's built-in Wi-Fi. On first setup, the device broadcasts a temporary hotspot. When users connect their phone to it, a configuration page is served automatically for inputting the home Wi-Fi, password, and their pairing code. The active surrounding network scanning feature from ESP32 boards was then included. A scannable list was added so users can select their Wi-Fi. The manual input design is retained as a fallback for networks that do not display in scan results. The shared pairing code is hardcoded into the device, ensuring only the intended pair of devices can communicate. In the end, the credentials are saved in the ESP32's non-volatile storage with a bright Wi-Fi icon on the screen top bar, and devices can automatically reconnect on every reboot without repeating the setup process.
 
-The ESP32's ability to scan surrounding networks was then included. A scannable list was added so users can select their Wi-Fi network more easily. Manual input is retained as a fallback for networks that do not appear in scan results. The shared pairing code is hardcoded into the device, ensuring only the intended pair of devices can communicate. The credentials are saved in the ESP32's non-volatile storage, while a Wi-Fi icon on the screen's top bar shows connection status. Devices can automatically reconnect on every reboot without repeating the setup process.
+The emoji status display acts as the main communication element of MoodLink. The emojis are all drawn using geometric primitives such as arcs and lines instead of font glyphs and bitmap images (lovyan03, n.d.). This ensures that the emojis scale smoothly without any pixelisation throughout different render contexts. Font glyphs lack the required expressiveness for the emojis to represent mood, and bitmaps are prone to pixelisation when scaled (Ilitek, 2013). The bitmap images would have to be stored on the ESP32 using a SPIFFS system, which would have taken up most of the ESP32 SRAM (Espressif Systems, 2024a; Espressif Systems, 2024b). A global `SCALE` float is multiplied by every measurement in the drawing functions, allowing the same drawing code to render three contexts. A schedule page, self-panel, and partner panel dismiss the need for multiple versions of the drawing functions. The partner panel on the left takes up most of the screen, allowing users to easily see their partner's status, whilst the user's own status is kept smaller. Moreover, the scales for each context are saved and restored, ensuring the size of the function does not affect the layout.
 
-The emoji status display acts as the main communication element of MoodLink. The emojis are drawn using geometric primitives such as arcs and lines instead of font glyphs or bitmap images (lovyan03, n.d.). This allows the emojis to scale smoothly across different rendering contexts. Font glyphs lack the required expressiveness for representing mood, while bitmaps can become pixelated when scaled (Ilitek, 2013). Bitmap images would also need to be stored on the ESP32 using a SPIFFS system, which would consume additional memory (Espressif Systems, 2024a; Espressif Systems, 2024b).
+> Image placeholder: insert busy status figure.
 
-A global `SCALE` value is multiplied by drawing measurements, allowing the same drawing code to render across three contexts: the schedule page, the self panel, and the partner panel. The partner panel on the left takes up most of the screen so users can easily see their partner's status, while the user's own status is kept smaller on the right.
+> Image placeholder: insert bad day status figure.
 
-> Image placeholder: insert Figure 5 showing busy status.
+The five statuses are kept simple but expressive to allow for a clear understanding of the user's mood. The miss you status is inspired by the iOS heart reaction, a familiar visual for users (Apple Inc., 2024). The sleeping status is inspired by the *We Bare Bears* cartoons (Cartoon Network, 2015). To prevent tearing from redrawing the bear graphic at parallel bus speeds every 90ms, all elements apart from the Z animation are drawn once using `startSleepScene()`, with each frame only deleting the previous Z position via bounding boxes in `zPrev[i]`. For the Z animation to work, three requirements must be fulfilled. The partner is online, their status is sleeping, and the bear has been illustrated on the screen. To allow the Zzz to loop naturally, the Z characters have their own offsets varying in colour, size, and position. The animation also uses a non-blocking `millis()` timer. This allows the function to work after 90ms to ensure that the animation does not block button handling, clock updates, or MQTT. To mitigate visual clutter, the user's sleeping status was changed to three Zs, whilst the partner's sleeping status was kept the same.
 
-> Image placeholder: insert Figure 6 showing bad day status.
+> Image placeholder: insert miss you status figure.
 
-> Image placeholder: insert Figure 7 showing miss you status.
-
-> Image placeholder: insert Figure 8 showing sleeping status.
-
-The five statuses are kept simple but expressive to support a clear understanding of the user's mood. The miss you status is inspired by the iOS heart reaction, a familiar visual for users (Apple Inc., 2024). The sleeping status is inspired by *We Bare Bears* (Cartoon Network, 2015). To prevent tearing from redrawing the bear graphic every 90ms at parallel bus speeds, all elements apart from the Z animation are drawn once using `startSleepScene()`, with each frame only deleting the previous Z position through bounding boxes in `zPrev[i]`. The Z animation uses a non-blocking `millis()` timer so it does not block button handling, clock updates, or MQTT. To reduce visual clutter, the user's sleeping status was simplified to three Zs, while the partner's sleeping status keeps the full bear graphic.
+> Image placeholder: insert sleeping status figure.
 
 #### Time and Schedule
 
-For the time and scheduling function, our design combines local interaction with online services and saved settings on the ESP32-S3 board. In the early version of MoodLink, time and timezone were set manually by the rotary encoder, which was inconvenient after restarts or when used in different countries. Therefore, we added an Auto Time mode. When connected to Wi-Fi, MoodLink can obtain the UTC offset through an IP-based API and synchronise the clock with NTP to automatically update the time and timezone (Espressif Systems, n.d.-c; IP-API, n.d.). We also kept the manual option because it remains useful when the network is unavailable or users want direct control. The ESP32 saves the selected mode and timezone in Preferences so that the main settings are retained after restart (Espressif Systems, n.d.-b).
+For the time and scheduling function, our design combines local interaction with online services and saved settings on the ESP32-S3 board. In the early version of MoodLink, time and timezone were set manually by the rotary encoder, which was inconvenient after restarts or when used in different countries. So we added an Auto Time mode to improve this. When connected to Wi-Fi, it can obtain the UTC offset through an IP-based API and synchronise the clock with NTP to automatically update the time and time zone (Espressif Systems, n.d.-c; IP-API, n.d.). We also kept the manual option. It remains useful when the network is unavailable or users want direct control. The ESP32 saves the selected mode and timezone in Preferences so that the main settings are retained after restart (Espressif Systems, n.d.-b).
 
-> Image placeholder: insert Figure 9 showing Auto Time mode.
+> Image placeholder: insert Figure 7 Auto Time Mode.
 
-> Image placeholder: insert Figure 10 showing Manual Time mode.
+> Image placeholder: insert Figure 8 Manual Time Mode.
 
-The schedule function was also developed step by step. Firstly, device status could only be changed manually by the rotary encoder. We extended this into a schedule system so users can plan emotional states in advance. Each schedule includes a target status, start time, end time, and a repeat rule such as once, daily, weekly, or monthly. We also added checks so invalid schedules, such as an end time earlier than the start time, cannot be saved. During use, the device checks active schedules and changes the status automatically; then it returns to the previous status afterwards. This makes time in our project not only something to display, but also a way to control the device's behaviour.
+The schedule function was also developed step by step. Firstly, device status could only be changed manually by the knob. We extended this into a schedule system so that users can plan emotional states in advance. Each schedule includes a target status, start time, end time, and a repeat rule (once, daily, weekly, or monthly). We also added checks so that invalid schedules, such as an end time earlier than the start time, cannot be saved. During use, the device checks active schedules and changes the status automatically; then it returns to the previous status afterwards. This makes time in our project not only for display, but also a way to control the device's behaviour.
 
-> Image placeholder: insert Figure 11 showing Schedule Function.
+> Image placeholder: insert Figure 9 Schedule Function.
 
 #### Display Configuration
 
-Issues with pixel corruption and colour display occurred because the ILI9488 driver used in the TFT screen hardware specification did not fully match the LovyanGFX configuration. This was addressed through explicit settings in the code. `cfg.dlen_16bit = false` was important for supporting the ILI9488 colour transmission format. The parallel bus speed was adjusted to make updates more reliable. An explicit read frequency was also added to reduce unpredictable display colours. Readability was disabled using `readable = false` to prevent bus conflicts because the display's read pin is tied to 3.3V. `rgb_order = false` was added to ensure the correct colour channel order, and `bus_shared = false` was set because the display bus is not shared with other devices.
+Issues with pixel corruption and colour display in the display occurred due to the ILI9488 driver used in the TFT screen hardware specification not matching the LovyanGFX configuration. This was addressed through six explicit settings in the code. `cfg.dlen_16bit = false;` was vital to allowing the ILI9488 to support the LovyanGFX default 16-bit colour parallel bus by force correcting the 18-bit transmission. The signal sent by the default 2MHz was unstable in the ESP32 parallel bus, making updates unreliable. Changing it to `cfg.freq_write = 8000000` resolved it. An explicit read frequency, `cfg.freq_read = 4000000`, was needed to reduce unpredictable display colours, as undefined read clocks lead to unpredictable results. Readability was disabled using `readable = false` to prevent bus conflicts, as the display's read pin is tied to a high voltage of 3.3V. ILI9488 and LovyanGFX expect colour data in varying formats (RGB, BGR). `rgb_order = false` was added to ensure the correct channel order. LovyanGFX's assumption of bus sharing was corrected.
 
-> Image placeholder: insert Figure 12 showing pixelated / corrupted free status display.
+> Image placeholder: insert pixelated free status display figure.
 
 #### MQTT Communication
 
-The two MoodLink devices communicate over MQTT, a lightweight communication protocol widely used in IoT products (Bandyopadhyay and Bhattacharyya, 2013). MQTT allows direct communication without needing to know IP addresses and supports retained status messages after device reconnection (Naik, 2017). Each device publishes to four topics: emotional status, Unix timestamp time, timezone index, and heartbeat. Status updates are transmitted immediately after user interaction.
-
-The heartbeat was a final design improvement for online/offline indication. Each device publishes a heartbeat every five seconds regardless of user activity. If no message is received from the partner device for 130 seconds, the device marks the paired device as offline and displays the time when the partner was last seen. This ensures the connection state is always communicated to the user rather than silently failing, which is central to MoodLink's aim of providing emotional reassurance rather than uncertainty.
+The two MoodLink devices communicate over MQTT, which is a lightweight communication protocol widely used in IoT products (Bandyopadhyay and Bhattacharyya, 2013). The selection of MQTT allows a direct communication approach without knowing IP addresses and a robust system with retained status messages after device reconnection (Naik, 2017). Each device publishes to four topics: emotional status, time in Unix timestamp, timezone index, and heartbeat. Status updates are transmitted immediately on user interaction. The heartbeat was a final design to improve the online/offline indication. Each device publishes a heartbeat every five seconds regardless of activities. If no message is received from the partner device for 130 seconds, the device marks the paired device as offline and displays the time when the partner was last seen. This design ensures the connection state is always communicated to the user rather than silently failing, which is central to MoodLink's aim of providing emotional reassurance rather than uncertainty.
 
 ### Enclosure
 
-The enclosure was developed as a communicative part of MoodLink. All models were built in Fusion 360 and 3D printed in PLA. It integrates all components and internal wiring into a compact desktop object. The screen is recessed into the upper section, while the rotary knob is placed centrally to support comfortable interaction. A knob cover unifies the overall appearance and a logo nameplate highlights the unique product identity.
+The enclosure was developed as a communicative part. All models were built in Fusion 360 and 3D printed in PLA. It integrates all the components and internal wiring into a compact desktop object. The screen is recessed into the upper section. The rotary knob is placed centrally to support comfortable interaction. A knob cover unifies the overall appearance colour and a logo nameplate highlights the unique product features.
 
-> Image placeholder: insert Figure 13 showing assembled enclosure 3D models.
+> Image placeholder: insert Figure 3.2.1 The assembled enclosure 3D models.
 
-> Image placeholder: insert Figure 14 showing front-right upper view of all models.
+> Image placeholder: insert Figure 3.2.2 The front-right upper view of all models.
 
-> Image placeholder: insert Figure 15 showing lower-left rear view of all models.
+> Image placeholder: insert Figure 3.2.3 The lower-left rear view of all models.
 
-> Image placeholder: insert Figure 16 showing knob cover.
+> Image placeholder: insert Figure 3.2.4 Knob cover.
 
-> Image placeholder: insert Figure 17 showing logo nameplate.
+> Image placeholder: insert Figure 3.2.5 Logo nameplate.
 
-The design was informed by Nabaztag, an ambient device whose rounded and character-like form showed that connected products can communicate through both presence and function (Violet, 2025). Disney's principle of appeal was referenced to guide overall friendliness (Thomas and Johnston, 1981). This informed the decision to treat the screen as a face so the device could sit naturally as a companion object.
+The design was informed by Nabaztag, an ambient device whose rounded and character-like form showed that connected products can communicate through both presence and function (Violet, 2025). Disney's principle of appeal was referenced in a design sense to guide overall friendliness (Thomas and Johnston, 1981). This informed the decision to treat the screen as a face to let it sit naturally. Figure 3.2.6 shows the personalised accessories, currently including Santa hat, rabbit ears, and Sorting Hat, which extended this logic by supporting a sense of company and ownership. The connection of the accessories was achieved through six magnetic points.
 
-Personalised accessories currently include a Santa hat, rabbit ears, and a Sorting Hat, extending the sense of companionship and ownership. The connection of the accessories was achieved through six magnetic points.
-
-> Image placeholder: insert Figure 18 showing personalised accessories from left to right: Santa hat, Sorting Hat, rabbit ears.
+> Image placeholder: insert Figure 3.2.6 Personalised accessories, from left to right: Santa hat, Sorting Hat, rabbit ears.
 
 For the iteration, an earlier prototype used a rectangular screen on a stand, which was functional but visually far from a companion device. A later sketch explored a more rounded enclosure with a clearer head-body relationship. A fully integrated shell was also considered, but a separable structure was adopted because it is easier for debugging and reassembly. These changes improved both the emotional character and the practical usability of MoodLink.
 
-> Image placeholder: insert Figure 19 showing sketch of the first version of the enclosure.
+> Image placeholder: insert Figure 3.2.7 Sketch of the first version of the enclosure.
 
-> Image placeholder: insert Figure 20 showing sketch of the second version of the enclosure.
+> Image placeholder: insert Figure 3.2.8 Sketch of the second version of the enclosure.
 
-> Image placeholder: insert Figure 21 showing the integrated head and body version.
+> Image placeholder: insert Figure 3.2.9 The version with head and body integrated.
 
 ## How to Use
 
 ### Prerequisites
 
-Install the Arduino IDE and add ESP32 board support.
-
-1. Open Arduino IDE -> File -> Preferences.
-2. Add this URL to "Additional boards manager URLs":
-
 ```text
 https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
 ```
 
-3. Go to Tools -> Board -> Boards Manager, search `esp32`, and install version `3.0.7`.
-4. Select Tools -> Board -> esp32 -> `ESP32S3 Dev Module`.
-5. Install the required Arduino libraries, including `LovyanGFX` and `PubSubClient`.
-
-> Image placeholder: insert How-to-use prerequisite screenshots.
+> Image placeholder: insert Prerequisites screenshots.
 
 ### Getting Started
 
-#### Step 1 -- Clone or Download the Code
+#### Step 1 - Clone or Download the Code
 
 ```bash
 git clone https://github.com/Annie-Zhu1210/CASA0021_GPP_Group1.git
 ```
 
-Open the final sketch in Arduino IDE:
+> Image placeholder: insert Step 1 screenshots.
 
-```text
-MoodLink/status_timezone_hotspot/status_timezone_hotspot.ino
-```
+#### Step 2 - Create Your `config.h`
 
-> Image placeholder: insert screenshot showing the code folder / Arduino IDE opening step.
+> Image placeholder: insert Figure x: config.example.h file.
 
-#### Step 2 -- Create `config.h`
+#### Step 3 - Flash the Device
 
-Copy `config.example.h` and rename the copy to `config.h`:
+> Image placeholder: insert Step 3 screenshots.
 
-```bash
-cp MoodLink/status_timezone_hotspot/config.example.h MoodLink/status_timezone_hotspot/config.h
-```
+#### Step 4 - Using MoodLink
 
-Then edit `config.h` with your Wi-Fi hotspot name, pairing code, MQTT broker settings, and device identity.
+> Image placeholder: insert Step 4 screenshots.
 
-For one device, use:
-
-```cpp
-#define DEVICE_ID 1
-```
-
-For the other paired device, use:
-
-```cpp
-#define DEVICE_ID 2
-```
-
-> Image placeholder: insert Figure showing `config.example.h`.
-
-#### Step 3 -- Flash the Device
-
-Connect the ESP32-S3 board by USB, select the correct board and port in Arduino IDE, then upload the sketch. Repeat the process for the second device, making sure the two devices use different `DEVICE_ID` values.
-
-> Image placeholder: insert flashing / upload screenshots.
-
-#### Step 4 -- Using MoodLink
-
-On startup, MoodLink shows a welcome screen and then a network check page. If Wi-Fi has not been configured, choose Wi-Fi setup. The device will create a temporary hotspot. Connect a phone to the hotspot and use the setup page to select or manually enter the home Wi-Fi network, password, and pairing code.
-
-After both devices are online, rotate the knob to change your emotional status. Long press the knob to open the settings menu, where users can configure date and time, Wi-Fi, world clocks, and schedules.
-
-> Image placeholder: insert Figure showing System Logic and User Journey.
+> Image placeholder: insert Figure x: System Logic and User Journey.
 
 ## Production Costs
 
-The prototype hardware components cost approximately £66 per pair. Filament consumption is approximately 820g per pair based on slicer output. Enclosure printing was carried out using university facilities, while commercial printing services would cost more due to labour. At production scale, labour costs were estimated using Formula 1. Unit costs can be significantly reduced through bulk purchasing of components, and the ESP32-S3-WROOM-1 development board can be replaced by a bare ESP32-S3 chip integrated on a PCB, eliminating development board costs. At the £175 Kickstarter price, our prototype has a 46.48% gross margin, while production at scale has an approximate 60% gross margin.
+In Figure x, the prototype hardware components cost approximately £66 per pair. The filament consumption is approximately 820g per pair based on slicer output. Enclosure printing was carried out using university facilities, while commercial printing services will cost more due to labour. At the production scale, labour costs were estimated based on Formula 1. Unit costs can be significantly reduced through bulk purchasing of components, and the ESP32-S3-WROOM-1 board can be replaced by a bare ESP32-S3 chip integrated on a PCB, eliminating development board costs. At the £175 Kickstarter price, our prototype has a 46.48% gross margin, while production at scale has an approximate 60% gross margin.
 
-> Image placeholder: insert Formula 1 showing total labour cost per two MoodLink devices.
+> Image placeholder: insert Formula 1: Total Labour Cost per 2 MoodLink Devices.
 
-> Image placeholder: insert Figure showing production vs. at-scale cost breakdown.
+> Image placeholder: insert Figure x: Production vs. At Scale Cost Breakdown.
 
 ## Sustainability
 
-The ESP32 module has an expected lifespan of over 10 years under friendly environmental conditions. The modular design of MoodLink allows individual components to be replaced if anything fails rather than discarding the entire device. This supports the lifespan and repairability of MoodLink. The ESP32 spends most of its time waiting for MQTT messages and updating periodically, without continuous heavy computation, allowing modest energy consumption. In addition, the bio-based PLA filament of the 3D-printed enclosure supports environmental sustainability.
+The ESP32 module has an expected lifespan of over 10 years under friendly environmental conditions. The modular design of MoodLink allows individual components to be replaced if anything fails rather than discarding the entire device. These guarantee the lifespan and the repairability of MoodLink. The ESP32 spends most of its time waiting for MQTT messages and updating periodically, without continuous heavy computation, allowing a modest energy consumption. Besides, the bio-based PLA filament of the 3D-printed enclosure enhances environmental sustainability.
 
 ## Evaluation and Future Work
 
@@ -195,28 +142,28 @@ Finally, the magnetic accessory system could be expanded. At the moment, persona
 
 ## Conclusion
 
-MoodLink is a pair of long-distance communication devices that addresses the challenge of staying emotionally present with someone far away across different time zones. It uses MQTT messaging, Wi-Fi provisioning, automatic time synchronisation, and a custom TFT display interface, housed in a curved, rounded enclosure that helps long-distance relationships feel more mentally connected. From a basic status and time display to a polished interface with automatic Wi-Fi scanning, IP-based time detection, and online/offline presence awareness, and from a sharp, rigid-edged design to a softened rounded enclosure, the evolution of MoodLink improves both reliable real-time emotional status sharing and the overall sense of companionship.
+MoodLink is a pair of long-distance communication devices that solves the challenge of staying emotionally present with someone far away across different time zones. It uses MQTT messaging, Wi-Fi provisioning, automatic time synchronisation, and a custom TFT display interface, housed in a curved, rounded enclosure that keeps long-distance relationships mentally connected. From a bare status and time display to a polished interface with automatic Wi-Fi scanning, IP-based time detection, and online/offline presence awareness, and from a sharp and rigid-edged design to a softened, rounded enclosure, the evolution ensures not only reliable real-time emotional status sharing but also the seamless user experience and a sense of companionship.
 
 ## The Team
 
-Below are the contact details for the MoodLink team. Please contact the relevant team member for any queries on the product or its reproduction.
+Below are the contact details for the MoodLink Team. Please contact the relevant team member for any queries on the product or its reproduction.
 
 | Name | Email | Main Responsibilities |
 | --- | --- | --- |
-| Annie Zhu | zcakxz4@ucl.ac.uk | Initial Wi-Fi setup, MQTT data communication, and main screen layout |
-| Yussr Osman | yussr.osman.25@ucl.ac.uk | Hardware wiring and graphics design |
-| Ziyi Wang | zczq912@ucl.ac.uk | Enclosure modelling |
-| Yewei Bian | ucfnybi@ucl.ac.uk | Time and timezone settings, auto time sync, schedule function, Wi-Fi setup UX improvements, MQTT presence detection, and UI refresh optimisation |
+| Annie Zhu | zcakxz4@ucl.ac.uk | Initial Wi-Fi Setup, MQTT Data Communication, and Main Screen Layout |
+| Yussr Osman | yussr.osman.25@ucl.ac.uk | Hardware wiring and graphics designer |
+| Ziyi Wang | zczq912@ucl.ac.uk | Enclosure modeling |
+| Yewei Bian | ucfnybi@ucl.ac.uk | Time and Timezone Settings, Auto Time Sync, Schedule Function, Wi-Fi Setup UX Improvements, MQTT Presence Detection, and UI Refresh Optimisation |
 
 ## AI Acknowledgement
 
-This project acknowledges the use of AI in an assistive role in line with UCL guidelines, including support for coding, proofreading, grammar, and document structure.
+This project acknowledges the use of AI in an assistive role in line with UCL guidelines to assist with coding and proofreading to help with grammar and structure.
 
 ## References
 
-Apple Inc. (2024) *Use iMessage apps on iPhone*. Available at: https://support.apple.com/en-gb/guide/iphone/iph12d2cee48/ios (Accessed: 17 April 2026).
+Apple Inc. (2024) *iMessage*. Available at: https://support.apple.com/en-gb/guide/iphone/iph12d2cee48/ios (Accessed: 17 April 2026).
 
-Bandyopadhyay, S. and Bhattacharyya, A. (2013) 'Lightweight Internet protocols for web enablement of sensors using constrained gateway devices', *Proceedings of the International Conference on Computing, Networking and Communications (ICNC)*. doi: https://doi.org/10.1109/ICCNC.2013.6504105.
+Bandyopadhyay, S. and Bhattacharyya, A. (2013) 'Lightweight Internet protocols for web enablement of sensors using constrained gateway devices', *IEEE Xplore*. doi: https://doi.org/10.1109/ICCNC.2013.6504105.
 
 Cacioppo, J.T. and Patrick, W. (2008) *Loneliness: Human Nature and the Need for Social Connection*. New York: W.W. Norton & Company.
 
@@ -250,7 +197,7 @@ lovyan03 (n.d.) *LovyanGFX*. Available at: https://github.com/lovyan03/LovyanGFX
 
 Microchip Technology (2020) *MCP73831/2 Miniature Single-Cell, Fully Integrated Li-Ion, Li-Polymer Charge Management Controllers*. Available at: https://ww1.microchip.com/downloads/aemDocuments/documents/APID/ProductDocuments/DataSheets/MCP73831-Family-Data-Sheet-DS20001984H.pdf (Accessed: 22 April 2026).
 
-Naik, N. (2017) 'Choice of effective messaging protocols for IoT systems: MQTT, CoAP, AMQP and HTTP', *2017 IEEE International Systems Engineering Symposium (ISSE)*. doi: https://doi.org/10.1109/SysEng.2017.8088251.
+Naik, N. (2017) 'Choice of effective messaging protocols for IoT systems: MQTT, CoAP, AMQP and HTTP', *IEEE Xplore*. doi: https://doi.org/10.1109/SysEng.2017.8088251.
 
 Neustaedter, C. and Greenberg, S. (2012) 'Intimacy in long-distance relationships over video chat', *Proceedings of the SIGCHI Conference on Human Factors in Computing Systems*, Austin, May 2012, pp. 753-762.
 
