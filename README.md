@@ -10,15 +10,10 @@ Living in an increasingly connected and digitised world has contributed to the g
 
 #### Hardware
 
-<p align="center">
-  <img src="/Media/Images/schematics .png" width="70%" alt="This is the schematics" /><br>
-  <sub>Figure 1. schematics</sub>
-</p>
-
-<p align="center">
-  <img src="/Media/Images/hardware.png" width="70%" alt="This is the hardware components" /><br>
-  <sub>Figure 2. hardware components</sub>
-</p>
+<div align="center">
+  <img src="/Media/Images/schematics.png" width="70%" alt="This is the schematics" />
+  <img src="/Media/Images/hardware.png" width="70%" alt="This is the hardware components" />
+</div>
 
 MoodLink's hardware components are outlined in the table above. Components are soldered on a perfboard to minimise the risk of disconnection, ensuring stable shared power rails and grounds. The components were chosen with the aim of facilitating passive interactions for users that feel tactile and deliberate.
 
@@ -82,8 +77,8 @@ The enclosure (Figure 3.2.1 - Figure 3.2.3) was developed as a communicative par
 </div>
 
 <div align="center">
-  <img src="/Media/Images/Logo_3DModel.png" width="50%" alt="This is the Logo nameplate" />
-  <img src="/Media/Images/button.png" width="50%" alt="This is the button" />
+  <img src="/Media/Images/Logo_3DModel.png" alt="This is the Logo nameplate" style="height: 220px; width: auto; margin-right: 12px;" />
+  <img src="/Media/Images/button.png" alt="This is the button" style="height: 220px; width: auto;" />
 </div>
 
 The design was informed by Nabaztag, an ambient device whose rounded and character-like form showed that connected products can communicate through both presence and function (Violet, 2025). Disney's principle of appeal was referenced in a design sense to guide overall friendliness (Thomas and Johnston, 1981). This informed the decision to treat the screen as a face to let it sit naturally. Figure 3.2.6 shows the personalised accessories, currently including Santa hat, rabbit ears, and Sorting Hat, which extended this logic by supporting a sense of company and ownership. The connection of the accessories was achieved through six magnetic points.
@@ -95,9 +90,9 @@ The design was informed by Nabaztag, an ambient device whose rounded and charact
 For the iteration, an earlier prototype (Figure 3.2.7) used a rectangular screen on a stand, which was functional but visually far from a companion device. A later sketch (Figure 3.2.8) explored a more rounded enclosure with a clearer head-body relationship. A fully integrated shell shown in Figure 3.2.9  was also considered, but a separable structure was adopted because it is easier for debugging and reassembly. These changes improved both the emotional character and the practical usability of MoodLink.
 
 <div align="center">
-  <img src="/Media/Images/Sketch_first_version.png" alt="This is the Sketch of the first version of the enclosure" style="height: 440px; width: auto; margin-right: 12px;" />
-  <img src="/Media/Images/Sketch_second_version.png" alt="This is the Sketch of the second version of the enclosure" style="height: 440px; width: auto;" />
-  <img src="/Media/Images/enclosure _3.png" alt="This is the version with head and body integrated" style="height: 440px; width: auto;" />
+  <img src="/Media/Images/Sketch_first_version.png" alt="This is the Sketch of the first version of the enclosure" style="height: 330px; width: auto; margin-right: 12px;" />
+  <img src="/Media/Images/Sketch_second_version.png" alt="This is the Sketch of the second version of the enclosure" style="height: 330px; width: auto;" />
+  <img src="/Media/Images/enclosure _3.png" alt="This is the version with head and body integrated" style="height: 330px; width: auto;" />
 </div>
 
 ## How to Use
