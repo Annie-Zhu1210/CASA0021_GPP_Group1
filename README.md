@@ -153,7 +153,7 @@ For the iteration, an earlier prototype (Figure 19) used a rectangular screen on
       <sub>Figure 20. Second enclosure sketch</sub>
     </td>
     <td align="center">
-      <img src="/Media/Images/enclosure _3.png" alt="This is the version with head and body integrated" height="330" /><br>
+      <img src="/Media/Images/integrated_head_body.png" alt="This is the version with head and body integrated" height="330" /><br>
       <sub>Figure 21. Integrated head-body version</sub>
     </td>
   </tr>
