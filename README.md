@@ -121,7 +121,7 @@ The two MoodLink devices communicate over MQTT, which is a lightweight communica
 
 ### Enclosure
 
-The enclosure (Figure 15 - Figure 17) was developed as a communicative part. All models were built in Fusion 360 and 3D printed in PLA. It integrates all the components and internal wiring into a compact desktop object. The screen is recessed into the upper section. The rotary knob is placed centrally to support comfortable interaction. A knob cover (Figure 19) unifies the overall appearance colour and a logo nameplate (Figure 18) highlights the unique product features.
+The enclosure (Figure 15 - Figure 17) was developed as a communicative part. All models were built in Fusion 360 and 3D printed in PLA. It integrates all the components and internal wiring into a compact desktop object. The screen is recessed into the upper section. The rotary knob is placed centrally to support comfortable interaction. A knob cover (Figure 18) unifies the overall appearance colour and a logo nameplate (Figure 19) highlights the unique product features.
 
 <table align="center">
   <tr>
@@ -143,12 +143,12 @@ The enclosure (Figure 15 - Figure 17) was developed as a communicative part. All
 <table align="center">
   <tr>
     <td align="center">
-      <img src="/Media/Images/Logo_3DModel.png" alt="This is the Logo nameplate" height="220" /><br>
-      <sub>Figure 18. Logo nameplate</sub>
+      <img src="/Media/Images/button.png" alt="This is the button" height="220" /><br>
+      <sub>Figure 18. Knob cover</sub>
     </td>
     <td align="center">
-      <img src="/Media/Images/button.png" alt="This is the button" height="220" /><br>
-      <sub>Figure 19. Knob cover</sub>
+      <img src="/Media/Images/Logo_3DModel.png" alt="This is the Logo nameplate" height="220" /><br>
+      <sub>Figure 19. Logo nameplate</sub>
     </td>
   </tr>
 </table>
