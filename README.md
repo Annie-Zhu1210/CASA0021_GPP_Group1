@@ -21,12 +21,12 @@ Living in an increasingly connected and digitised world has contributed to the g
 #### Hardware
 
 <p align="center">
-  <img src="/Media/Images/schematics.png" width="70%" alt="This is the schematics" /><br>
+  <img src="Media/Images/schematics.png" width="70%" alt="This is the schematics" /><br>
   <sub>Figure 1. Schematics</sub>
 </p>
 
 <p align="center">
-  <img src="/Media/Images/hardware.png" width="70%" alt="This is the hardware components" /><br>
+  <img src="Media/Images/hardware.png" width="70%" alt="This is the hardware components" /><br>
   <sub>Figure 2. Hardware components</sub>
 </p>
 
