@@ -114,23 +114,28 @@ Issues with pixel corruption and colour display in the display occurred due to t
 
 The two MoodLink devices communicate over MQTT, which is a lightweight communication protocol widely used in IoT products (Bandyopadhyay and Bhattacharyya, 2013). The selection of MQTT allows a direct communication approach without knowing IP addresses and a robust system with retained status messages after device reconnection (Naik, 2017). Each device publishes to four topics: emotional status, time in Unix timestamp, timezone index, and heartbeat. Status updates are transmitted immediately on user interaction. The heartbeat was a final design to improve the online/offline indication. Each device publishes a heartbeat every five seconds regardless of activities. If no message is received from the partner device for 130 seconds, the device marks the paired device as offline and displays the time when the partner was last seen. This design ensures the connection state is always communicated to the user rather than silently failing, which is central to MoodLink's aim of providing emotional reassurance rather than uncertainty.
 
+<p align="center">
+  <img src="/Media/Images/MQTT_Explorer.png" width="25%" alt="This is the topics for both devices on MQTT Explorer" /><br>
+  <sub>Figure 14. Four topics on MQTT Explorer for two devices</sub>
+</p>
+
 ### Enclosure
 
-The enclosure (Figure 13 - Figure 15) was developed as a communicative part. All models were built in Fusion 360 and 3D printed in PLA. It integrates all the components and internal wiring into a compact desktop object. The screen is recessed into the upper section. The rotary knob is placed centrally to support comfortable interaction. A knob cover (Figure 16) unifies the overall appearance colour and a logo nameplate (Figure 17) highlights the unique product features.
+The enclosure (Figure 15 - Figure 17) was developed as a communicative part. All models were built in Fusion 360 and 3D printed in PLA. It integrates all the components and internal wiring into a compact desktop object. The screen is recessed into the upper section. The rotary knob is placed centrally to support comfortable interaction. A knob cover (Figure 19) unifies the overall appearance colour and a logo nameplate (Figure 18) highlights the unique product features.
 
 <table align="center">
   <tr>
     <td align="center">
       <img src="/Media/Images/enclosure _1.png" alt="This is the assembled enclosure 3D models" height="330" /><br>
-      <sub>Figure 13. Assembled enclosure 3D model</sub>
+      <sub>Figure 15. Assembled enclosure 3D model</sub>
     </td>
     <td align="center">
       <img src="/Media/Images/enclosure _2.png" alt="This is the front-right upper view of all models" height="330" /><br>
-      <sub>Figure 14. Front-right upper view of enclosure</sub>
+      <sub>Figure 16. Front-right upper view of enclosure</sub>
     </td>
     <td align="center">
       <img src="/Media/Images/enclosure _3.png" alt="This is the lower-left rear view of all models" height="330" /><br>
-      <sub>Figure 15. Lower-left rear view of enclosure</sub>
+      <sub>Figure 17. Lower-left rear view of enclosure</sub>
     </td>
   </tr>
 </table>
@@ -139,37 +144,37 @@ The enclosure (Figure 13 - Figure 15) was developed as a communicative part. All
   <tr>
     <td align="center">
       <img src="/Media/Images/Logo_3DModel.png" alt="This is the Logo nameplate" height="220" /><br>
-      <sub>Figure 16. Logo nameplate</sub>
+      <sub>Figure 18. Logo nameplate</sub>
     </td>
     <td align="center">
       <img src="/Media/Images/button.png" alt="This is the button" height="220" /><br>
-      <sub>Figure 17. Knob cover</sub>
+      <sub>Figure 19. Knob cover</sub>
     </td>
   </tr>
 </table>
 
-The design was informed by Nabaztag, an ambient device whose rounded and character-like form showed that connected products can communicate through both presence and function (Violet, 2025). Disney's principle of appeal was referenced in a design sense to guide overall friendliness (Thomas and Johnston, 1981). This informed the decision to treat the screen as a face to let it sit naturally. Figure 18 shows the personalised accessories, currently including Santa hat, rabbit ears, and Sorting Hat, which extended this logic by supporting a sense of company and ownership. The connection of the accessories was achieved through six magnetic points.
+The design was informed by Nabaztag, an ambient device whose rounded and character-like form showed that connected products can communicate through both presence and function (Violet, 2025). Disney's principle of appeal was referenced in a design sense to guide overall friendliness (Thomas and Johnston, 1981). This informed the decision to treat the screen as a face to let it sit naturally. Figure 20 shows the personalised accessories, currently including Santa hat, rabbit ears, and Sorting Hat, which extended this logic by supporting a sense of company and ownership. The connection of the accessories was achieved through six magnetic points.
 
 <p align="center">
   <img src="/Media/Images/accessories .png" width="70%" alt="These are the personalised accessories (from left to right: Santa hat, Sorting Hat, rabbit ears)" /><br>
-  <sub>Figure 18. Personalised accessories</sub>
+  <sub>Figure 20. Personalised accessories</sub>
 </p>
 
-For the iteration, an earlier prototype (Figure 19) used a rectangular screen on a stand, which was functional but visually far from a companion device. A later sketch (Figure 20) explored a more rounded enclosure with a clearer head-body relationship. A fully integrated shell shown in Figure 21  was also considered, but a separable structure was adopted because it is easier for debugging and reassembly. These changes improved both the emotional character and the practical usability of MoodLink.
+For the iteration, an earlier prototype (Figure 21) used a rectangular screen on a stand, which was functional but visually far from a companion device. A later sketch (Figure 22) explored a more rounded enclosure with a clearer head-body relationship. A fully integrated shell shown in Figure 23  was also considered, but a separable structure was adopted because it is easier for debugging and reassembly. These changes improved both the emotional character and the practical usability of MoodLink.
 
 <table align="center">
   <tr>
     <td align="center">
       <img src="/Media/Images/Sketch_first_version.png" alt="This is the Sketch of the first version of the enclosure" height="330" /><br>
-      <sub>Figure 19. First enclosure sketch</sub>
+      <sub>Figure 21. First enclosure sketch</sub>
     </td>
     <td align="center">
       <img src="/Media/Images/Sketch_second_version.png" alt="This is the Sketch of the second version of the enclosure" height="330" /><br>
-      <sub>Figure 20. Second enclosure sketch</sub>
+      <sub>Figure 22. Second enclosure sketch</sub>
     </td>
     <td align="center">
       <img src="/Media/Images/integrated_head_body.png" alt="This is the version with head and body integrated" height="330" /><br>
-      <sub>Figure 21. Integrated head-body version</sub>
+      <sub>Figure 23. Integrated head-body version</sub>
     </td>
   </tr>
 </table>
@@ -209,7 +214,7 @@ Open MoodLink/status_timezone_hotspot/status_timezone_hotspot.ino in Arduino IDE
 
 <p align="center">
   <img src="/Media/Images/config.example.h.png" width="70%" alt="This is the config.example.h file" /><br>
-  <sub>Figure 22. config.example.h file</sub>
+  <sub>Figure 24. config.example.h file</sub>
 </p>
 
 #### Step 3 - Flash the Device
@@ -226,7 +231,7 @@ Open MoodLink/status_timezone_hotspot/status_timezone_hotspot.ino in Arduino IDE
 
 <p align="center">
   <img src="/Media/Images/System_Logic.png" width="70%" alt="This is the System Logic and User Journey" /><br>
-  <sub>Figure 23. System Logic and User Journey</sub>
+  <sub>Figure 25. System Logic and User Journey</sub>
 </p>
 
 ## The Team
@@ -242,7 +247,7 @@ Below are the contact details for the MoodLink Team. Please contact the relevant
 
 ## Production Costs
 
-In Figure 24, the prototype hardware components cost approximately £66 per pair. The filament consumption is approximately 820g per pair based on slicer output. Enclosure printing was carried out using university facilities, while commercial printing services will cost more due to labour. At the production scale, labour costs were estimated based on Formula 1. Unit costs can be significantly reduced through bulk purchasing of components, and the ESP32-S3-WROOM-1 board can be replaced by a bare ESP32-S3 chip integrated on a PCB, eliminating development board costs. At the £175 Kickstarter price, our prototype has a 46.48% gross margin, while production at scale has an approximate 60% gross margin.
+In Figure 26, the prototype hardware components cost approximately £66 per pair. The filament consumption is approximately 820g per pair based on slicer output. Enclosure printing was carried out using university facilities, while commercial printing services will cost more due to labour. At the production scale, labour costs were estimated based on Formula 1. Unit costs can be significantly reduced through bulk purchasing of components, and the ESP32-S3-WROOM-1 board can be replaced by a bare ESP32-S3 chip integrated on a PCB, eliminating development board costs. At the £175 Kickstarter price, our prototype has a 46.48% gross margin, while production at scale has an approximate 60% gross margin.
 
 <p align="center">
   <img src="/Media/Images/Cost_Formula.png" width="100%" alt="This is the Formula 1: Total Labour Cost per 2 MoodLink Devices" /><br>
@@ -251,7 +256,7 @@ In Figure 24, the prototype hardware components cost approximately £66 per pair
 
 <p align="center">
   <img src="/Media/Images/Cost_Breakdown.png" width="100%" alt="This is the Production vs. At Scale Cost Breakdown" /><br>
-  <sub>Figure 24. Production vs. At Scale Cost Breakdown</sub>
+  <sub>Figure 26. Production vs. At Scale Cost Breakdown</sub>
 </p>
 
 ## Sustainability
