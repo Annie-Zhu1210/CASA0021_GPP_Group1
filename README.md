@@ -48,17 +48,22 @@ MoodLink displays consist of a welcome screen that leads users to the main displ
 
 The choice of the ESP32 board allows a convenient Wi-Fi setup process and keeps the interaction within the device itself without a mobile app. Rather than hardcoding network credentials, we built a captive portal for initial setup, which is commonly used by commercial IoT products. Each MoodLink device connects to the internet via the ESP32-S3's built-in Wi-Fi. On first setup, the device broadcasts a temporary hotspot. When users connect their phone to it, a configuration page is served automatically for inputting the home Wi-Fi password and their pairing code. The active surrounding network scanning feature from ESP32 boards was then included. A scannable list was added so users can select their Wi-Fi. The manual input design is retained as a fallback for networks that do not display in scan results. The shared pairing code is hardcoded into the device, ensuring only the intended pair of devices can communicate. In the end, the credentials are saved in the ESP32's non-volatile storage with a bright Wi-Fi icon on the screen top bar, and devices can automatically reconnect on every reboot without repeating the setup process.
 
+<p align="center">
+  <img src="/Media/Images/WiFi_Setup.png" width="80%" alt="This is the WiFi setup screen on the device and the hotspot connection guide" /><br>
+  <sub>Figure 5. WiFi Setup screen on the device and the hotspot captive portal</sub>
+</p>
+
 The emoji status display acts as the main communication element of MoodLink. The emojis are all drawn using geometric primitives such as arcs and lines instead of font glyphs and bitmap images (lovyan03, n.d.). This ensures that the emojis scale smoothly without any pixelisation throughout different render contexts. Font glyphs lack the required expressiveness for the emojis to represent mood, and bitmaps are prone to pixelisation when scaled (Ilitek, 2013). The bitmap images would have to be stored on the ESP32 using a SPIFFS system, which would have taken up most of the ESP32 SRAM (Espressif Systems, 2024a; Espressif Systems, 2024b). A global `SCALE` float is multiplied by every measurement in the drawing functions, allowing the same drawing code to render three contexts. A schedule page, self-panel, and partner panel dismiss the need for multiple versions of the drawing functions. The partner panel on the left takes up most of the screen, allowing users to easily see their partner's status, whilst the user's own status is kept smaller. Moreover, the scales for each context are saved and restored, ensuring the size of the function does not affect the layout.
 
 <table align="center">
   <tr>
     <td align="center">
       <img src="/Media/Images/screen_display/Busy_status.jpg" alt="This is the busy status" height="330" /><br>
-      <sub>Figure 5. Busy status</sub>
+      <sub>Figure 6. Busy status</sub>
     </td>
     <td align="center">
       <img src="/Media/Images/screen_display/bad_day_status.jpg" alt="This is the bad day status" height="330" /><br>
-      <sub>Figure 6. Bad day status</sub>
+      <sub>Figure 7. Bad day status</sub>
     </td>
   </tr>
 </table>
@@ -69,11 +74,11 @@ The five statuses are kept simple but expressive to allow for a clear understand
   <tr>
     <td align="center">
       <img src="/Media/Images/screen_display/miss_you_status.jpg" alt="This is the miss you status" height="330" /><br>
-      <sub>Figure 7. Miss you status</sub>
+      <sub>Figure 8. Miss you status</sub>
     </td>
     <td align="center">
       <img src="/Media/Images/screen_display/sleeping _tatus.jpg" alt="This is the sleeping status" height="330" /><br>
-      <sub>Figure 8. Sleeping status</sub>
+      <sub>Figure 9. Sleeping status</sub>
     </td>
   </tr>
 </table>
@@ -84,11 +89,11 @@ For the time and scheduling function, our design combines local interaction with
   <tr>
     <td align="center">
       <img src="/Media/Images/AutoTime.jpg" alt="This is the Auto Time Mode" height="220" /><br>
-      <sub>Figure 9. Auto Time mode</sub>
+      <sub>Figure 10. Auto Time mode</sub>
     </td>
     <td align="center">
       <img src="/Media/Images/ManualTime.jpg" alt="This is the Manual Time Mode" height="220" /><br>
-      <sub>Figure 10. Manual Time mode</sub>
+      <sub>Figure 11. Manual Time mode</sub>
     </td>
   </tr>
 </table>
@@ -97,14 +102,14 @@ The schedule function was also developed step by step. Firstly, device status co
 
 <p align="center">
   <img src="/Media/Images/Schedule.png" width="40%" alt="This is the Schedule Function" /><br>
-  <sub>Figure 11. Schedule function</sub>
+  <sub>Figure 12. Schedule function</sub>
 </p>
 
 Issues with pixel corruption and colour display in the display occurred due to the ILI9488 driver used in the TFT screen hardware specification not matching the LovyanGFX configuration. This was addressed through six explicit settings in the code. `cfg.dlen_16bit = false;` was vital to allowing the ILI9488 to support the LovyanGFX default 16-bit colour parallel bus by force correcting the 18-bit transmission. The signal sent by the default 2MHz was unstable in the ESP32 parallel bus, making updates unreliable. Changing it to `cfg.freq_write = 8000000` resolved it. An explicit read frequency, `cfg.freq_read = 4000000`, was needed to reduce unpredictable display colours, as undefined read clocks lead to unpredictable results. Readability was disabled using `readable = false` to prevent bus conflicts, as the display's read pin is tied to a high voltage of 3.3V. ILI9488 and LovyanGFX expect colour data in varying formats (RGB, BGR). `rgb_order = false` was added to ensure the correct channel order. LovyanGFX's assumption of bus sharing was corrected.
 
 <p align="center">
   <img src="/Media/Images/screen_display/pixelized_free_status.jpg" width="40%" alt="This is the pixelated free status display" /><br>
-  <sub>Figure 12. Pixelated free status display</sub>
+  <sub>Figure 13. Pixelated free status display</sub>
 </p>
 
 The two MoodLink devices communicate over MQTT, which is a lightweight communication protocol widely used in IoT products (Bandyopadhyay and Bhattacharyya, 2013). The selection of MQTT allows a direct communication approach without knowing IP addresses and a robust system with retained status messages after device reconnection (Naik, 2017). Each device publishes to four topics: emotional status, time in Unix timestamp, timezone index, and heartbeat. Status updates are transmitted immediately on user interaction. The heartbeat was a final design to improve the online/offline indication. Each device publishes a heartbeat every five seconds regardless of activities. If no message is received from the partner device for 130 seconds, the device marks the paired device as offline and displays the time when the partner was last seen. This design ensures the connection state is always communicated to the user rather than silently failing, which is central to MoodLink's aim of providing emotional reassurance rather than uncertainty.
