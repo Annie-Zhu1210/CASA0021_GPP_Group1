@@ -35,21 +35,21 @@ MoodLink's hardware components are outlined in the table above. Components are s
 #### Functionalities and Controlling Code
 
 <p align="center">
-  <img src="/Media/Images/screen_display/welcome_screen.jpg" width="40%" alt="This is the welcome screen" /><br>
+  <img src="Media/Images/screen_display/welcome_screen.jpg" width="40%" alt="This is the welcome screen" /><br>
   <sub>Figure 3. Welcome screen</sub>
 </p>
 
 MoodLink displays consist of a welcome screen that leads users to the main display, which contains the five statuses. Two additional displays were added to improve user interactions with the device: an offline page and a checking page when a partner's connection is not yet confirmed.
 
 <p align="center">
-  <img src="/Media/Images/screen_display/offline_status.jpg" width="40%" alt="This is the offline status" /><br>
+  <img src="Media/Images/screen_display/offline_status.jpg" width="40%" alt="This is the offline status" /><br>
   <sub>Figure 4. Offline status screen</sub>
 </p>
 
 The choice of the ESP32 board allows a convenient Wi-Fi setup process and keeps the interaction within the device itself without a mobile app. Rather than hardcoding network credentials, we built a captive portal for initial setup, which is commonly used by commercial IoT products. Each MoodLink device connects to the internet via the ESP32-S3's built-in Wi-Fi. On first setup, the device broadcasts a temporary hotspot. When users connect their phone to it, a configuration page is served automatically for inputting the home Wi-Fi password and their pairing code. The active surrounding network scanning feature from ESP32 boards was then included. A scannable list was added so users can select their Wi-Fi. The manual input design is retained as a fallback for networks that do not display in scan results. The shared pairing code is hardcoded into the device, ensuring only the intended pair of devices can communicate. In the end, the credentials are saved in the ESP32's non-volatile storage with a bright Wi-Fi icon on the screen top bar, and devices can automatically reconnect on every reboot without repeating the setup process.
 
 <p align="center">
-  <img src="/Media/Images/WiFi_Setup.png" width="80%" alt="This is the WiFi setup screen on the device and the hotspot connection guide" /><br>
+  <img src="Media/Images/WiFi_Setup.png" width="80%" alt="This is the WiFi setup screen on the device and the hotspot connection guide" /><br>
   <sub>Figure 5. WiFi Setup screen on the device and the hotspot captive portal</sub>
 </p>
 
@@ -58,11 +58,11 @@ The emoji status display acts as the main communication element of MoodLink. The
 <table align="center">
   <tr>
     <td align="center">
-      <img src="/Media/Images/screen_display/Busy_status.jpg" alt="This is the busy status" height="330" /><br>
+      <img src="Media/Images/screen_display/Busy_status.jpg" alt="This is the busy status" height="330" /><br>
       <sub>Figure 6. Busy status</sub>
     </td>
     <td align="center">
-      <img src="/Media/Images/screen_display/bad_day_status.jpg" alt="This is the bad day status" height="330" /><br>
+      <img src="Media/Images/screen_display/bad_day_status.jpg" alt="This is the bad day status" height="330" /><br>
       <sub>Figure 7. Bad day status</sub>
     </td>
   </tr>
@@ -73,11 +73,11 @@ The five statuses are kept simple but expressive to allow for a clear understand
 <table align="center">
   <tr>
     <td align="center">
-      <img src="/Media/Images/screen_display/miss_you_status.jpg" alt="This is the miss you status" height="330" /><br>
+      <img src="Media/Images/screen_display/miss_you_status.jpg" alt="This is the miss you status" height="330" /><br>
       <sub>Figure 8. Miss you status</sub>
     </td>
     <td align="center">
-      <img src="/Media/Images/screen_display/sleeping _tatus.jpg" alt="This is the sleeping status" height="330" /><br>
+      <img src="Media/Images/screen_display/sleeping _tatus.jpg" alt="This is the sleeping status" height="330" /><br>
       <sub>Figure 9. Sleeping status</sub>
     </td>
   </tr>
@@ -88,11 +88,11 @@ For the time and scheduling function, our design combines local interaction with
 <table align="center">
   <tr>
     <td align="center">
-      <img src="/Media/Images/AutoTime.jpg" alt="This is the Auto Time Mode" height="220" /><br>
+      <img src="Media/Images/AutoTime.jpg" alt="This is the Auto Time Mode" height="220" /><br>
       <sub>Figure 10. Auto Time mode</sub>
     </td>
     <td align="center">
-      <img src="/Media/Images/ManualTime.jpg" alt="This is the Manual Time Mode" height="220" /><br>
+      <img src="Media/Images/ManualTime.jpg" alt="This is the Manual Time Mode" height="220" /><br>
       <sub>Figure 11. Manual Time mode</sub>
     </td>
   </tr>
@@ -101,21 +101,21 @@ For the time and scheduling function, our design combines local interaction with
 The schedule function was also developed step by step. Firstly, device status could only be changed manually by the knob. We extended this into a schedule system so that users can plan emotional states in advance. Each schedule includes a target status, start time, end time, and a repeat rule (once, daily, weekly, or monthly). We also added checks so that invalid schedules, such as an end time earlier than the start time, cannot be saved. During use, the device checks active schedules and changes the status automatically; then it returns to the previous status afterwards. This makes time in our project not only for display, but also a way to control the device's behaviour.
 
 <p align="center">
-  <img src="/Media/Images/Schedule.png" width="40%" alt="This is the Schedule Function" /><br>
+  <img src="Media/Images/Schedule.png" width="40%" alt="This is the Schedule Function" /><br>
   <sub>Figure 12. Schedule function</sub>
 </p>
 
 Issues with pixel corruption and colour display in the display occurred due to the ILI9488 driver used in the TFT screen hardware specification not matching the LovyanGFX configuration. This was addressed through six explicit settings in the code. `cfg.dlen_16bit = false;` was vital to allowing the ILI9488 to support the LovyanGFX default 16-bit colour parallel bus by force correcting the 18-bit transmission. The signal sent by the default 2MHz was unstable in the ESP32 parallel bus, making updates unreliable. Changing it to `cfg.freq_write = 8000000` resolved it. An explicit read frequency, `cfg.freq_read = 4000000`, was needed to reduce unpredictable display colours, as undefined read clocks lead to unpredictable results. Readability was disabled using `readable = false` to prevent bus conflicts, as the display's read pin is tied to a high voltage of 3.3V. ILI9488 and LovyanGFX expect colour data in varying formats (RGB, BGR). `rgb_order = false` was added to ensure the correct channel order. LovyanGFX's assumption of bus sharing was corrected.
 
 <p align="center">
-  <img src="/Media/Images/screen_display/pixelized_free_status.jpg" width="40%" alt="This is the pixelated free status display" /><br>
+  <img src="Media/Images/screen_display/pixelized_free_status.jpg" width="40%" alt="This is the pixelated free status display" /><br>
   <sub>Figure 13. Pixelated free status display</sub>
 </p>
 
 The two MoodLink devices communicate over MQTT, which is a lightweight communication protocol widely used in IoT products (Bandyopadhyay and Bhattacharyya, 2013). The selection of MQTT allows a direct communication approach without knowing IP addresses and a robust system with retained status messages after device reconnection (Naik, 2017). Each device publishes to four topics: emotional status, time in Unix timestamp, timezone index, and heartbeat. Status updates are transmitted immediately on user interaction. The heartbeat was a final design to improve the online/offline indication. Each device publishes a heartbeat every five seconds regardless of activities. If no message is received from the partner device for 130 seconds, the device marks the paired device as offline and displays the time when the partner was last seen. This design ensures the connection state is always communicated to the user rather than silently failing, which is central to MoodLink's aim of providing emotional reassurance rather than uncertainty.
 
 <p align="center">
-  <img src="/Media/Images/MQTT_Explorer.png" width="25%" alt="This is the topics for both devices on MQTT Explorer" /><br>
+  <img src="Media/Images/MQTT_Explorer.png" width="25%" alt="This is the topics for both devices on MQTT Explorer" /><br>
   <sub>Figure 14. Four topics on MQTT Explorer for two devices</sub>
 </p>
 
@@ -126,15 +126,15 @@ The enclosure (Figure 15 - Figure 17) was developed as a communicative part. All
 <table align="center">
   <tr>
     <td align="center">
-      <img src="/Media/Images/enclosure _1.png" alt="This is the assembled enclosure 3D models" height="330" /><br>
+      <img src="Media/Images/enclosure _1.png" alt="This is the assembled enclosure 3D models" height="330" /><br>
       <sub>Figure 15. Assembled enclosure 3D model</sub>
     </td>
     <td align="center">
-      <img src="/Media/Images/enclosure _2.png" alt="This is the front-right upper view of all models" height="330" /><br>
+      <img src="Media/Images/enclosure _2.png" alt="This is the front-right upper view of all models" height="330" /><br>
       <sub>Figure 16. Front-right upper view of enclosure</sub>
     </td>
     <td align="center">
-      <img src="/Media/Images/enclosure _3.png" alt="This is the lower-left rear view of all models" height="330" /><br>
+      <img src="Media/Images/enclosure _3.png" alt="This is the lower-left rear view of all models" height="330" /><br>
       <sub>Figure 17. Lower-left rear view of enclosure</sub>
     </td>
   </tr>
@@ -143,11 +143,11 @@ The enclosure (Figure 15 - Figure 17) was developed as a communicative part. All
 <table align="center">
   <tr>
     <td align="center">
-      <img src="/Media/Images/button.png" alt="This is the button" height="220" /><br>
+      <img src="Media/Images/button.png" alt="This is the button" height="220" /><br>
       <sub>Figure 18. Knob cover</sub>
     </td>
     <td align="center">
-      <img src="/Media/Images/Logo_3DModel.png" alt="This is the Logo nameplate" height="220" /><br>
+      <img src="Media/Images/Logo_3DModel.png" alt="This is the Logo nameplate" height="220" /><br>
       <sub>Figure 19. Logo nameplate</sub>
     </td>
   </tr>
@@ -156,7 +156,7 @@ The enclosure (Figure 15 - Figure 17) was developed as a communicative part. All
 The design was informed by Nabaztag, an ambient device whose rounded and character-like form showed that connected products can communicate through both presence and function (Violet, 2025). Disney's principle of appeal was referenced in a design sense to guide overall friendliness (Thomas and Johnston, 1981). This informed the decision to treat the screen as a face to let it sit naturally. Figure 20 shows the personalised accessories, currently including Santa hat, rabbit ears, and Sorting Hat, which extended this logic by supporting a sense of company and ownership. The connection of the accessories was achieved through six magnetic points.
 
 <p align="center">
-  <img src="/Media/Images/accessories .png" width="70%" alt="These are the personalised accessories (from left to right: Santa hat, Sorting Hat, rabbit ears)" /><br>
+  <img src="Media/Images/accessories .png" width="70%" alt="These are the personalised accessories (from left to right: Santa hat, Sorting Hat, rabbit ears)" /><br>
   <sub>Figure 20. Personalised accessories</sub>
 </p>
 
@@ -165,15 +165,15 @@ For the iteration, an earlier prototype (Figure 21) used a rectangular screen on
 <table align="center">
   <tr>
     <td align="center">
-      <img src="/Media/Images/Sketch_first_version.png" alt="This is the Sketch of the first version of the enclosure" height="330" /><br>
+      <img src="Media/Images/Sketch_first_version.png" alt="This is the Sketch of the first version of the enclosure" height="330" /><br>
       <sub>Figure 21. First enclosure sketch</sub>
     </td>
     <td align="center">
-      <img src="/Media/Images/Sketch_second_version.png" alt="This is the Sketch of the second version of the enclosure" height="330" /><br>
+      <img src="Media/Images/Sketch_second_version.png" alt="This is the Sketch of the second version of the enclosure" height="330" /><br>
       <sub>Figure 22. Second enclosure sketch</sub>
     </td>
     <td align="center">
-      <img src="/Media/Images/integrated_head_body.png" alt="This is the version with head and body integrated" height="330" /><br>
+      <img src="Media/Images/integrated_head_body.png" alt="This is the version with head and body integrated" height="330" /><br>
       <sub>Figure 23. Integrated head-body version</sub>
     </td>
   </tr>
@@ -184,8 +184,8 @@ For the iteration, an earlier prototype (Figure 21) used a rectangular screen on
 ### Prerequisites
 
 <div align="center">
-  <img src="/Media/Images/HowToUse1.png" width="100%" alt="This is the Hardware setup and enclosure" />
-  <img src="/Media/Images/HowToUse2.png" width="100%" alt="This is the Arduino IDE setup and ESP32 package" />
+  <img src="Media/Images/HowToUse1.png" width="100%" alt="This is the Hardware setup and enclosure" />
+  <img src="Media/Images/HowToUse2.png" width="100%" alt="This is the Arduino IDE setup and ESP32 package" />
 </div>
 
 ```text
@@ -193,7 +193,7 @@ https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32
 ```
 
 <div align="center">
-  <img src="/Media/Images/HowToUse3.png" width="100%" alt="This is the required libraries" />
+  <img src="Media/Images/HowToUse3.png" width="100%" alt="This is the required libraries" />
 </div>
 
 ### Getting Started
@@ -209,28 +209,28 @@ Open MoodLink/status_timezone_hotspot/status_timezone_hotspot.ino in Arduino IDE
 #### Step 2 - Create Your `config.h`
 
 <div align="center">
-  <img src="/Media/Images/HowToUse4.png" width="100%" alt="This is the step 2" />
+  <img src="Media/Images/HowToUse4.png" width="100%" alt="This is the step 2" />
 </div>
 
 <p align="center">
-  <img src="/Media/Images/config.example.h.png" width="70%" alt="This is the config.example.h file" /><br>
+  <img src="Media/Images/config.example.h.png" width="70%" alt="This is the config.example.h file" /><br>
   <sub>Figure 24. config.example.h file</sub>
 </p>
 
 #### Step 3 - Flash the Device
 
 <div align="center">
-  <img src="/Media/Images/HowToUse5.png" width="100%" alt="This is the step 3" />
+  <img src="Media/Images/HowToUse5.png" width="100%" alt="This is the step 3" />
 </div>
 
 #### Step 4 - Using MoodLink
 
 <div align="center">
-  <img src="/Media/Images/HowToUse6.png" width="100%" alt="This is the step 4" />
+  <img src="Media/Images/HowToUse6.png" width="100%" alt="This is the step 4" />
 </div>
 
 <p align="center">
-  <img src="/Media/Images/System_Logic.png" width="70%" alt="This is the System Logic and User Journey" /><br>
+  <img src="Media/Images/System_Logic.png" width="70%" alt="This is the System Logic and User Journey" /><br>
   <sub>Figure 25. System Logic and User Journey</sub>
 </p>
 
@@ -250,12 +250,12 @@ Below are the contact details for the MoodLink Team. Please contact the relevant
 In Figure 26, the prototype hardware components cost approximately £66 per pair. The filament consumption is approximately 820g per pair based on slicer output. Enclosure printing was carried out using university facilities, while commercial printing services will cost more due to labour. At the production scale, labour costs were estimated based on Formula 1. Unit costs can be significantly reduced through bulk purchasing of components, and the ESP32-S3-WROOM-1 board can be replaced by a bare ESP32-S3 chip integrated on a PCB, eliminating development board costs. At the £175 Kickstarter price, our prototype has a 46.48% gross margin, while production at scale has an approximate 60% gross margin.
 
 <p align="center">
-  <img src="/Media/Images/Cost_Formula.png" width="100%" alt="This is the Formula 1: Total Labour Cost per 2 MoodLink Devices" /><br>
+  <img src="Media/Images/Cost_Formula.png" width="100%" alt="This is the Formula 1: Total Labour Cost per 2 MoodLink Devices" /><br>
   <sub>Formula 1. Total Labour Cost per 2 MoodLink Devices</sub>
 </p>
 
 <p align="center">
-  <img src="/Media/Images/Cost_Breakdown.png" width="100%" alt="This is the Production vs. At Scale Cost Breakdown" /><br>
+  <img src="Media/Images/Cost_Breakdown.png" width="100%" alt="This is the Production vs. At Scale Cost Breakdown" /><br>
   <sub>Figure 26. Production vs. At Scale Cost Breakdown</sub>
 </p>
 
