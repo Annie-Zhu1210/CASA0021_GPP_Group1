@@ -222,6 +222,17 @@ Open MoodLink/status_timezone_hotspot/status_timezone_hotspot.ino in Arduino IDE
   <sub>Figure 23. System Logic and User Journey</sub>
 </p>
 
+## The Team
+
+Below are the contact details for the MoodLink Team. Please contact the relevant team member for any queries on the product or its reproduction.
+
+| Name | Email | Main Responsibilities |
+| --- | --- | --- |
+| Annie Zhu | zcakxz4@ucl.ac.uk | Initial Wi-Fi Setup, MQTT Data Communication, and Main Screen Layout |
+| Yussr Osman | yussr.osman.25@ucl.ac.uk | Hardware wiring and graphics designer |
+| Ziyi Wang | zczq912@ucl.ac.uk | Enclosure modeling |
+| Yewei Bian | ucfnybi@ucl.ac.uk | Time and Timezone Settings, Auto Time Sync, Schedule Function, Wi-Fi Setup UX Improvements, MQTT Presence Detection, and UI Refresh Optimisation |
+
 ## Production Costs
 
 In Figure 24, the prototype hardware components cost approximately £66 per pair. The filament consumption is approximately 820g per pair based on slicer output. Enclosure printing was carried out using university facilities, while commercial printing services will cost more due to labour. At the production scale, labour costs were estimated based on Formula 1. Unit costs can be significantly reduced through bulk purchasing of components, and the ESP32-S3-WROOM-1 board can be replaced by a bare ESP32-S3 chip integrated on a PCB, eliminating development board costs. At the £175 Kickstarter price, our prototype has a 46.48% gross margin, while production at scale has an approximate 60% gross margin.
@@ -251,17 +262,6 @@ Finally, the magnetic accessory system could be expanded. At the moment, persona
 ## Conclusion
 
 MoodLink is a pair of long-distance communication devices that solves the challenge of staying emotionally present with someone far away across different time zones. It uses MQTT messaging, Wi-Fi provisioning, automatic time synchronisation, and a custom TFT display interface, housed in a curved, rounded enclosure that keeps long-distance relationships mentally connected. From a bare status and time display to a polished interface with automatic Wi-Fi scanning, IP-based time detection, and online/offline presence awareness, and from a sharp and rigid-edged design to a softened, rounded enclosure, the evolution ensures not only reliable real-time emotional status sharing but also the seamless user experience and a sense of companionship.
-
-## The Team
-
-Below are the contact details for the MoodLink Team. Please contact the relevant team member for any queries on the product or its reproduction.
-
-| Name | Email | Main Responsibilities |
-| --- | --- | --- |
-| Annie Zhu | zcakxz4@ucl.ac.uk | Initial Wi-Fi Setup, MQTT Data Communication, and Main Screen Layout |
-| Yussr Osman | yussr.osman.25@ucl.ac.uk | Hardware wiring and graphics designer |
-| Ziyi Wang | zczq912@ucl.ac.uk | Enclosure modeling |
-| Yewei Bian | ucfnybi@ucl.ac.uk | Time and Timezone Settings, Auto Time Sync, Schedule Function, Wi-Fi Setup UX Improvements, MQTT Presence Detection, and UI Refresh Optimisation |
 
 ## AI Acknowledgement
 
