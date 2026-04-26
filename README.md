@@ -4,9 +4,11 @@
 
 Members: Yewei Bian​, Annie Zhu​, Ziyi Wang, Yussr Osman​
 
-Project title: [MoodLink](https://www.youtube.com/watch?v=xtSwTWn4Sbg)
+Project title: MoodLink
 
 GitHub repo: https://github.com/Annie-Zhu1210/CASA0021_GPP_Group1.git
+
+Project video: https://www.youtube.com/watch?v=xtSwTWn4Sbg
 
 ## Introduction
 
