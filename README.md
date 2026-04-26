@@ -1,5 +1,13 @@
 # MoodLink
 
+## Group Information
+
+Members: Yewei Bian​, Annie Zhu​, Ziyi Wang, Yussr Osman​
+
+Project title: [MoodLink](https://www.youtube.com/watch?v=xtSwTWn4Sbg)
+
+GitHub repo: https://github.com/Annie-Zhu1210/CASA0021_GPP_Group1.git
+
 ## Introduction
 
 Living in an increasingly connected and digitised world has contributed to the growth of long-distance relationships, including couples, families living apart, and international friends (DiGiovanni et al., 2026). Although existing technologies such as phones, social media, and messaging platforms facilitate communication, differences in time zones, work schedules, and daily routines often create uncertainty about when contact is appropriate. This challenge is particularly evident in romantic relationships: Neustaedter and Greenberg (2012) found that long-distance couples often experienced feelings of disconnection because they were unable to easily sense their partner's mood, energy level, and availability, which in turn could produce anxiety not fully resolved through calls alone. More broadly, loneliness and perceived social disconnection from significant others can negatively affect both psychological and physical well-being, especially when separation is prolonged by distance (Cacioppo and Patrick, 2008). At the same time, emotional presence remains an important but often unmet need in long-distance relationships (Dey and de Guzman, 2006). Research on ambient IoT further suggests that such devices can communicate information passively without demanding users' full attention (Davis et al., 2017; Hassenzahl et al., 2012). MoodLink was developed as a Kickstarter project in response to this gap, using ambient IoT technology to help couples, friends, and families maintain awareness of one another's feelings and availability without the fear of interrupting. Rather than requiring direct conversation, it supports passive awareness and lightweight communication, allowing users to feel each other's presence in everyday life. One key scenario is the moment of hesitation before making contact, when a user can simply glance at the paired device to judge whether the other person may be asleep, busy, unavailable, or emotionally low before deciding whether to reach out.
